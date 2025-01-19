@@ -1,101 +1,178 @@
-import Image from "next/image";
+import React from 'react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, Truck, CreditCard, Tag, Shield } from 'lucide-react';
 
-export default function Home() {
+const books = [
+  {
+    id: 1,
+    title: "The Crown",
+    author: "Kiera Cass",
+    price: 15.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23784584'/></svg>"
+  },
+  {
+    id: 2,
+    title: "Trials of Apollo",
+    author: "Rick Riordan",
+    price: 14.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23d4a017'/></svg>"
+  },
+  {
+    id: 3,
+    title: "Big Magic",
+    author: "Elizabeth Gilbert",
+    price: 12.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23ff69b4'/></svg>"
+  },
+  {
+    id: 4,
+    title: "Frost Arch",
+    author: "Kate Bloomfield",
+    price: 9.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23333333'/></svg>"
+  },
+  {
+    id: 5,
+    title: "Lonely City",
+    author: "Sample Author",
+    price: 19.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%234a4a4a'/></svg>"
+  },
+  {
+    id: 6,
+    title: "The Martial",
+    author: "Andy Weir",
+    price: 22.99,
+    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23ff6b35'/></svg>"
+  },
+];
+
+const homepage = () => {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between py-4">
+            <div className="text-2xl font-bold text-gray-800">📚 BANK-MEMO</div>
+            
+            {/* Search Bar */}
+            <div className="flex-1 max-w-xl mx-8">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search over 30 million book titles"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Search className="absolute right-3 top-2.5 text-gray-400" size={20} />
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <ShoppingCart className="text-gray-600" size={24} />
+              <User className="text-gray-600" size={24} />
+            </div>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          {/* Navigation */}
+          <nav className="flex space-x-8 py-4">
+            {['Home', 'Books', 'Magazines', 'Textbooks', 'Audiobooks', 'Recommended', 'Sale'].map((item) => (
+              <a key={item} href="#" className="text-gray-600 hover:text-blue-500">
+                {item}
+              </a>
+            ))}
+          </nav>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </header>
+
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-gray-100 to-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 pr-8">
+              <h2 className="text-4xl font-bold mb-4">
+              <span className="text-blue-500">ARCHIVA</span> 
+                <br />
+                <span className="text-gray-800">Effortless</span> <br/>
+                <span className="text-gray-800">Digital Legacy </span>
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">FOR OUR STUDENT COMMUNITY</p>
+              <Link href="./Sign">
+                <button className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                  ADD RESUME
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-4 gap-8">
+          <div className="flex items-center space-x-4">
+            <Truck className="text-blue-500" size={24} />
+            <div>
+              <h3 className="font-semibold">Quick Delivery</h3>
+              <p className="text-sm text-gray-500">Fast and reliable shipping</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <CreditCard className="text-blue-500" size={24} />
+            <div>
+              <h3 className="font-semibold">Pay with Easy</h3>
+              <p className="text-sm text-gray-500">Secure payment options</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Tag className="text-blue-500" size={24} />
+            <div>
+              <h3 className="font-semibold">Best Deal</h3>
+              <p className="text-sm text-gray-500">Competitive prices</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Shield className="text-blue-500" size={24} />
+            <div>
+              <h3 className="font-semibold">Secured Payment</h3>
+              <p className="text-sm text-gray-500">Safe transactions</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bestsellers */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Current Resumes</h2>
+          <a href="#" className="text-blue-500 hover:underline">View All</a>
+        </div>
+
+        <div className="relative">
+          <div className="flex space-x-6 overflow-x-auto pb-4">
+            {books.map((book) => (
+              <div key={book.id} className="flex-none w-48">
+                <img
+                  src={book.image}
+                  alt={book.title}
+                  className="w-full h-64 object-cover rounded-lg shadow-md mb-4"
+                />
+                <h3 className="font-semibold">{book.title}</h3>
+                <p className="text-sm text-gray-500">{book.author}</p>
+                <p className="text-blue-500 font-semibold mt-2">${book.price.toFixed(2)}</p>
+              </div>
+            ))}
+          </div>
+          <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md">
+            <ChevronLeft size={24} />
+          </button>
+          <button className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md">
+            <ChevronRight size={24} />
+          </button>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default homepage;
