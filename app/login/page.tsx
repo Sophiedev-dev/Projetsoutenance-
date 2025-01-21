@@ -1,96 +1,92 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ArrowLeft, Book, BookOpen, Library, Plus, Search, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search } from 'lucide-react';
+import MySideBar from './ui/sideBar';
 
 const Dashboard = () => {
-  const [memoires, setMemoires] = useState([
-    {
-      id: 1,
-      libelle: "Machine Learning Applications",
-      annee: "2024-01-15",
-      cycle: "Master",
-      specialite: "Computer Science",
-      universite: "MIT",
-      nom_fichier: "ml_thesis.pdf"
-    },
-    {
-      id: 2,
-      libelle: "Renewable Energy Systems",
-      annee: "2023-12-01",
-      cycle: "PhD",
-      specialite: "Engineering",
-      universite: "Stanford",
-      nom_fichier: "energy_thesis.pdf"
-    }
-  ]);
-
+  const [memoires, setMemoires] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [newMemoire, setNewMemoire] = useState({
-    libelle: "",
-    annee: "",
-    cycle: "",
-    specialite: "",
-    universite: "",
-    nom_fichier: null
+    libelle: '',
+    annee: '',
+    cycle: 'Bachelor',
+    specialite: '',
+    universite: '',
+    file: null,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fonction pour récupérer les mémoires depuis l'API
+  const fetchMemoires = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/memoires');
+      if (response.ok) {
+        const data = await response.json();
+        setMemoires(data.memoires);
+      } else {
+        console.error('Erreur lors de la récupération des mémoires.');
+      }
+    } catch (error) {
+      console.error('Erreur réseau lors de la récupération des mémoires :', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchMemoires();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     setNewMemoire((prev) => ({
       ...prev,
-      [name]: files ? files[0].name : value
+      [name]: files ? files[0] : value,
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setMemoires((prev) => [...prev, { ...newMemoire, id: prev.length + 1 }]);
-    setShowForm(false);
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+    formData.append('libelle', newMemoire.libelle);
+    formData.append('annee', newMemoire.annee);
+    formData.append('cycle', newMemoire.cycle);
+    formData.append('speciality', newMemoire.specialite);
+    formData.append('university', newMemoire.universite);
+    formData.append('file', newMemoire.file);
+    formData.append('id_etudiant', 1);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/memoires', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        alert('Mémoire ajouté avec succès !');
+        setShowForm(false);
+        fetchMemoires(); // Rafraîchit la liste des mémoires
+      } else {
+        alert('Une erreur est survenue lors de l\'ajout.');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la soumission :', error);
+      alert('Impossible de soumettre le formulaire.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
-        <div className="flex flex-col h-full">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-blue-600">📚 BANK-MEMO</h1>
-          </div>
-
-          <nav className="flex-1 px-4 space-y-2">
-            {["Dashboard", "My Books", "Collections", "Profile"].map((item, index) => (
-              <a
-                key={index}
-                href="#"
-                className="flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 rounded-lg"
-              >
-                {index === 0 && <BookOpen className="mr-3" />}
-                {index === 1 && <Book className="mr-3" />}
-                {index === 2 && <Library className="mr-3" />}
-                {index === 3 && <User className="mr-3" />}
-                {item}
-              </a>
-            ))}
-          </nav>
-
-          <div className="p-4">
-            <a href="/" className="flex items-center text-gray-600 hover:text-blue-600">
-              <ArrowLeft className="mr-2" size={20} />
-              Back to Home
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+      <MySideBar />
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">My Books Dashboard</h2>
             <p className="text-gray-600">Manage your academic works and publications</p>
           </div>
-
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -104,13 +100,13 @@ const Dashboard = () => {
           <div className="bg-white p-6 rounded-lg shadow-md mb-8">
             <h3 className="text-xl font-semibold mb-4">Add New Book</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-              {["libelle", "annee", "specialite", "universite"].map((field) => (
+              {['libelle', 'annee', 'specialite', 'universite'].map((field) => (
                 <div key={field}>
                   <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
                     {field}
                   </label>
                   <input
-                    type={field === "annee" ? "date" : "text"}
+                    type={field === 'annee' ? 'date' : 'text'}
                     name={field}
                     onChange={handleChange}
                     className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
@@ -135,7 +131,7 @@ const Dashboard = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
                 <input
                   type="file"
-                  name="nom_fichier"
+                  name="file"
                   onChange={handleChange}
                   className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                   required
@@ -151,16 +147,16 @@ const Dashboard = () => {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Save Book
+                  {isSubmitting ? 'Submitting...' : 'Save Book'}
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* Books List */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-4 border-b">
             <div className="relative">
@@ -172,12 +168,11 @@ const Dashboard = () => {
               />
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  {["Title", "Year", "Cycle", "Speciality", "University", "File"].map((header) => (
+                  {['Title', 'Year', 'Cycle', 'Speciality', 'University', 'File'].map((header) => (
                     <th
                       key={header}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
@@ -188,20 +183,20 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {memoires.map((memoire) => (
-                  <tr key={memoire.id} className="hover:bg-gray-50">
+                {memoires.map((memoire, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
                     <td className="px-6 py-4">{memoire.libelle}</td>
                     <td className="px-6 py-4">{new Date(memoire.annee).toLocaleDateString()}</td>
                     <td className="px-6 py-4">{memoire.cycle}</td>
-                    <td className="px-6 py-4">{memoire.specialite}</td>
-                    <td className="px-6 py-4">{memoire.universite}</td>
+                    <td className="px-6 py-4">{memoire.speciality}</td>
+                    <td className="px-6 py-4">{memoire.university}</td>
                     <td className="px-6 py-4">
                       <a
-                        href={`/${memoire.nom_fichier}`}
+                        href={`/${memoire.file_path}`}
                         download
                         className="text-blue-600 hover:underline"
                       >
-                        {memoire.nom_fichier}
+                        {memoire.file_name}
                       </a>
                     </td>
                   </tr>

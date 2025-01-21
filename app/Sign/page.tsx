@@ -1,21 +1,60 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const Form = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        router.push('/login'); // Redirige vers la page mybook
+      } else {
+        const data = await response.json();
+        setError(data.message || 'Erreur de connexion.');
+      }
+    } catch (err) {
+      setError('Erreur de connexion au serveur.');
+    }
+  };
+
   return (
     <StyledWrapper>
-      <form className="form">
+      <form className="form" onSubmit={handleSubmit}>
         <p className="form-title">Sign in</p>
         <div className="input-container">
-          <input type="email" placeholder="Enter email" />
+          <input
+            type="email"
+            placeholder="Enter email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
           <span></span>
         </div>
         <div className="input-container">
-          <input type="password" placeholder="Enter password" />
+          <input
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
+        {error && <p className="error-message">{error}</p>}
         <button type="submit" className="submit">
           Sign in
         </button>

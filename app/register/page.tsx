@@ -1,51 +1,124 @@
-'use client';
 
-import React from 'react';
+"use client";
+
+import React, { useState } from 'react';
+
 import styled from 'styled-components';
-import Link from 'next/link';
 
 const Form = () => {
+  const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confPassword, setConfPassword] = useState('');
+
+  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+    e.preventDefault();
+
+    if (password !== confPassword) {
+      alert("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    const formData = {
+      name,
+      surname,
+      email,
+      password,
+    };
+
+    try {
+      const response = await fetch('http://localhost:5000/api/etudiant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        alert('Étudiant ajouté avec succès !');
+        setName('');
+        setSurname('');
+        setEmail('');
+        setPassword('');
+        setConfPassword('');
+      } else {
+        const errorData = await response.json();
+        alert(`Erreur : ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'ajout :", error);
+      alert("Erreur de connexion au serveur.");
+    }
+  };
+
   return (
     <StyledWrapper>
-      <form className="form">
+      <form className="form" onSubmit={handleSubmit}>
         <p className="title">Sign Up</p>
         <p className="message">Signup now and get full access to our app.</p>
         <div className="flex">
           <label>
-            <input required placeholder="First name" type="text" className="input" />
-            
+            <input
+              required
+              placeholder="First name"
+              type="text"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </label>
           <label>
-            <input required placeholder="Last name" type="text" className="input" />
-            
+            <input
+              required
+              placeholder="Last name"
+              type="text"
+              className="input"
+              value={surname}
+              onChange={(e) => setSurname(e.target.value)}
+            />
           </label>
         </div>
         <label>
-          <input required placeholder="Email" type="email" className="input" />
-          
+          <input
+            required
+            placeholder="Email"
+            type="email"
+            className="input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </label>
         <label>
-          <input required placeholder="Password" type="password" className="input" />
-          
+          <input
+            required
+            placeholder="Password"
+            type="password"
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </label>
         <label>
-          <input required placeholder="Confirm password" type="password" className="input" />
-          
+          <input
+            required
+            placeholder="Confirm password"
+            type="password"
+            className="input"
+            value={confPassword}
+            onChange={(e) => setConfPassword(e.target.value)}
+          />
         </label>
-        <button className="submit">
-            <Link href="" >
-                Submit
-            </Link>
+        <button className="submit" type="submit">
+          Submit
         </button>
-        <p className="signin">Already have an account? 
-            <Link href="./login">
-                 Sign in
-            </Link>
+        <p className="signin">
+          Already have an account? <a href="./login">Sign in</a>
         </p>
       </form>
     </StyledWrapper>
   );
-}
+};
+
 
 const StyledWrapper = styled.div`
   display: flex;
