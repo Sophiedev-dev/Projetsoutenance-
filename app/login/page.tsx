@@ -2,9 +2,6 @@
 
 import React, { useState } from 'react';
 import { ArrowLeft, Book, BookOpen, Library, Plus, Search, User } from 'lucide-react';
-import Link from 'next/link';
-
-
 
 const Dashboard = () => {
   const [memoires, setMemoires] = useState([
@@ -61,28 +58,21 @@ const Dashboard = () => {
             <h1 className="text-2xl font-bold text-blue-600">📚 BANK-MEMO</h1>
           </div>
 
-          <Link href="./Mybook">
-            Book
-          </Link>
-          
-
-                   <nav className="flex-1 px-4 space-y-2">
-                      {[
-                        { name: "Dashboard", path: "./login", icon: <BookOpen className="mr-3" /> },
-                        { name: "My Books", path: "./Mybook", icon: <Book className="mr-3" /> },
-                        { name: "Collections", path: "/collections", icon: <Library className="mr-3" /> },
-                        { name: "Profile", path: "./Profile", icon: <User className="mr-3" /> }
-                      ].map((item, index) => (
-                        <a
-                          key={index}
-                          href={item.path}
-                          className="flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 rounded-lg"
-                        >
-                          {item.icon}
-                          {item.name}
-                        </a>
-                      ))}
-                    </nav>
+          <nav className="flex-1 px-4 space-y-2">
+            {["Dashboard", "My Books", "Collections", "Profile"].map((item, index) => (
+              <a
+                key={index}
+                href="#"
+                className="flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 rounded-lg"
+              >
+                {index === 0 && <BookOpen className="mr-3" />}
+                {index === 1 && <Book className="mr-3" />}
+                {index === 2 && <Library className="mr-3" />}
+                {index === 3 && <User className="mr-3" />}
+                {item}
+              </a>
+            ))}
+          </nav>
 
           <div className="p-4">
             <a href="/" className="flex items-center text-gray-600 hover:text-blue-600">
@@ -97,7 +87,7 @@ const Dashboard = () => {
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
+            <h2 className="text-2xl font-bold text-gray-800">My Books Dashboard</h2>
             <p className="text-gray-600">Manage your academic works and publications</p>
           </div>
 
