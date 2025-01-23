@@ -13,25 +13,29 @@ const Form = () => {
   const [passwordVisible, setPasswordVisible] = useState(false); // État pour contrôler la visibilité du mot de passe
   const router = useRouter();
 
-  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+  const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setError('');
-
+  
     try {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
+  
       if (response.ok) {
         const data = await response.json();
-
-        // Vérifier le rôle de l'utilisateur
-        if (data.role === "admin") {
-          router.push('/adminDashboard'); // Rediriger vers le tableau de bord administrateur
-        } else if (data.role ==="etudiant") {
-          router.push('/login'); // Rediriger vers un tableau de bord utilisateur normal
+  
+        // Stocker l'objet utilisateur complet dans localStorage
+        localStorage.setItem('user', JSON.stringify(data));
+  
+        // Rediriger en fonction du rôle de l'utilisateur
+        if (data.role === 'admin') {
+          router.push('/adminDashboard'); // Rediriger vers le tableau de bord admin
+        } else if (data.role === 'etudiant') {
+          router.push('/login'); // Rediriger vers le tableau de bord utilisateur
+          
         }
       } else {
         const data = await response.json();
@@ -41,6 +45,7 @@ const Form = () => {
       setError('Erreur de connexion au serveur.');
     }
   };
+  
 
   return (
     <StyledWrapper>

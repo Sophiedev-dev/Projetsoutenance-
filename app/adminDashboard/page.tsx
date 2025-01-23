@@ -52,21 +52,30 @@ const AdminDashboard = () => {
         },
         body: JSON.stringify({ action }),
       });
-
-      if (response.ok) {
-        // Envoie une notification à l'étudiant si le mémoire est validé
-        if (action === 'validate') {
-          toast.success('Le mémoire a été validé avec succès !');  // Notification succès
-        } else if (action === 'reject') {
-          toast.error('Le mémoire a été rejeté !');  // Notification erreur
-        }
-
-        fetchMemoires(); // Rafraîchir la liste des mémoires
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la mise à jour du mémoire.');
       }
+  
+      const responseData = await response.json();
+      console.log(responseData.message); // Optionnel : log du message de l'API
+  
+      // Notifications en fonction de l'action
+      if (action === 'validated') {
+        toast.success('Le mémoire a été validé avec succès !');
+      } else if (action === 'rejected') {
+        toast.error('Le mémoire a été rejeté !');
+      }
+  
+      fetchMemoires(); // Rafraîchir la liste des mémoires
     } catch (error) {
-      console.error("Erreur lors de l'action sur la mémoire", error);
+      console.error("Erreur lors de l'action sur le mémoire :", error.message);
+      toast.error("Une erreur est survenue, veuillez réessayer.");
     }
   };
+  
+  
 
   // Rendu de la liste des mémoires
   const renderMemoires = () => {
@@ -106,13 +115,13 @@ const AdminDashboard = () => {
                 </td>
                 <td className="px-6 py-4">
                   <button
-                    onClick={() => handleMemoireAction(memoire.id, 'validate')}
+                    onClick={() => handleMemoireAction(memoire.id_memoire, 'validated')}
                     className="bg-green-500 text-white px-2 py-1 rounded mr-2"
                   >
                     Valider
                   </button>
                   <button
-                    onClick={() => handleMemoireAction(memoire.id, 'reject')}
+                    onClick={() => handleMemoireAction(memoire.id_memoire, 'rejected')}
                     className="bg-red-500 text-white px-2 py-1 rounded"
                   >
                     Rejeter

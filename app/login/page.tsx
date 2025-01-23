@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import MySideBar from './ui/sideBar';
 
 const Dashboard = () => {
+  const [user, setUser] = useState<any>(null);
   const [memoires, setMemoires] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [newMemoire, setNewMemoire] = useState({
@@ -20,39 +21,46 @@ const Dashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fonction pour récupérer les mémoires depuis l'API
- const fetchMemoires = async () => {
-  try {
-    const response = await fetch('http://localhost:5000/api/memoire');
-    if (!response.ok) {
-      throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
-    }
-    const data = await response.json();
+  const fetchMemoires = async () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
 
-    // Déboguer la réponse pour vérifier sa structure
-    console.log('Données reçues depuis l\'API:', data);
 
-    // Adapter le traitement selon la structure reçue
-    if (Array.isArray(data)) {
-      setMemoires(data);
-    } else if (Array.isArray(data.memoire)) {
-      setMemoires(data.memoire);
-    } else {
-      console.error('Format inattendu des données reçues :', data);
-    }
-  } catch (error) {
-    if (error.name === 'TypeError') {
-      console.error('Erreur réseau ou problème de connexion :', error);
-    } else {
-      console.error('Erreur lors de la récupération des mémoires :', error.message);
-    }
-  }
-};
-
+      if (!user.user || !user.user.id_etudiant) {
+        console.error("Aucun utilisateur trouvé ou ID étudiant manquant.");
+        return;
+      }
   
-
+      const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${user.user.id_etudiant}`);
+      if (!response.ok) {
+        throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
+      }
+  
+      const data = await response.json();
+  
+      // Déboguer la réponse pour vérifier sa structure
+      console.log('Données reçues depuis l\'API:', data);
+  
+      // Adapter le traitement selon la structure reçue
+      if (Array.isArray(data.memoire)) {
+        setMemoires(data.memoire);
+      } else {
+        console.error('Format inattendu des données reçues :', data);
+      }
+    } catch (error) {
+      if (error.name === 'TypeError') {
+        console.error('Erreur réseau ou problème de connexion :', error);
+      } else {
+        console.error('Erreur lors de la récupération des mémoires :', error.message);
+      }
+    }
+  };
+  
   useEffect(() => {
     fetchMemoires();
   }, []);
+  
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -65,6 +73,8 @@ const Dashboard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const storedUser = localStorage.getItem('user');
+    const user = storedUser ? JSON.parse(storedUser) : null;
 
     const formData = new FormData();
     formData.append('libelle', newMemoire.libelle);
@@ -73,7 +83,10 @@ const Dashboard = () => {
     formData.append('speciality', newMemoire.specialite);
     formData.append('university', newMemoire.universite);
     formData.append('file', newMemoire.file);
-    formData.append('id_etudiant', 1);
+    formData.append('id_etudiant', user.user.id_etudiant);
+
+    console.log("formData");
+    console.log(formData);
 
     try {
       const response = await fetch('http://localhost:5000/api/memoire', {
