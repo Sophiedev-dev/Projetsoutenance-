@@ -48,7 +48,7 @@ if (!fs.existsSync("uploads")) {
 }
 
 // Route pour la soumission des données
-app.post("/api/memoires", upload.single("file"), (req, res) => {
+app.post("/api/memoire", upload.single("file"), (req, res) => {
   const { libelle, annee, cycle, speciality, university, id_etudiant } =
     req.body;
 
@@ -135,25 +135,64 @@ app.post("/api/login", (req, res) => {
     return res.status(400).json({ message: "Email et mot de passe requis." });
   }
 
-  const query = "SELECT * FROM etudiant WHERE email = ? AND password = ?";
-  db.query(query, [email, password], (err, results) => {
+  console.log("Email:", email);
+  console.log("Password:", password); // Vérifier que les valeurs sont bien envoyées
+
+  // Vérifier l'admin d'abord
+  const adminQuery = `
+    SELECT * 
+    FROM admin 
+    WHERE email = ? AND password = ?
+  `;
+  db.query(adminQuery, [email, password], (err, adminResults) => {
     if (err) {
-      console.error("Erreur lors de la connexion :", err);
+      console.error("Erreur lors de la connexion administrateur:", err);
       return res.status(500).json({ message: "Erreur interne du serveur." });
     }
 
-    if (results.length > 0) {
-      res.status(200).json({ message: "Connexion réussie." });
-    } else {
-      res.status(401).json({ message: "Email ou mot de passe incorrect." });
+    if (adminResults.length > 0) {
+      // Authentification admin réussie
+      return res
+        .status(200)
+        .json({ message: "Connexion administrateur réussie.", role: "admin" });
     }
+
+    // Si ce n'est pas un admin, vérifier l'étudiant
+    const studentQuery = `
+      SELECT * 
+      FROM etudiant 
+      WHERE email = ? AND password = ?
+      `;
+    db.query(studentQuery, [email, password], (err, studentResults) => {
+      if (err) {
+        console.error("Erreur lors de la connexion étudiant :", err);
+        return res
+          .status(500)
+          .json({ message: "Erreur interne du serveur.", error: err });
+      }
+
+      if (studentResults.length > 0) {
+        // Authentification étudiant réussie
+        return res.status(200).json({
+          message: "Connexion réussie.",
+          role: studentResults[0].role_name || "etudiant",
+        });
+      } else {
+        // Aucun utilisateur trouvé
+        return res
+          .status(401)
+          .json({ message: "Email ou mot de passe incorrect." });
+      }
+    });
   });
 });
 
 
 
+
+
 // Nouvelle route pour récupérer tous les mémoires
-app.get("/api/memoires", (req, res) => {
+app.get("/api/memoire", (req, res) => {
   const query = "SELECT * FROM memoire";
 
   db.query(query, (err, results) => {
@@ -164,9 +203,62 @@ app.get("/api/memoires", (req, res) => {
         .json({ message: "Erreur lors de la récupération des mémoires." });
     }
 
-    res.status(200).json({ memoires: results });
+    // Vérification des résultats dans la console
+    console.log(results);
+
+    res.status(200).json({ memoire: results });
   });
 });
+
+
+// // Récupérer tous les mémoires
+// app.get("/api/memoire", (req, res) => {
+//   const query = "SELECT * FROM memoire";
+//   db.query(query, (err, results) => {
+//     if (err) {
+//       return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
+//     }
+//     res.status(200).json({ memoire: results });
+//   });
+// });
+
+// Récupérer les statistiques
+app.get("/api/admin", (req, res) => {
+  const query = `
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN status = 'validated' THEN 1 ELSE 0 END) as validated,
+      SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+    FROM memoire
+  `;
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ message: "Erreur lors de la récupération des statistiques." });
+    }
+    res.status(200).json(results[0]);
+  });
+});
+
+// Mettre à jour le statut d'une mémoire
+app.patch("/api/memoire/:id", (req, res) => {
+  const { action } = req.body;
+  const id = req.params.id;
+  const status = action === 'validate' ? 'validated' : action === 'reject' ? 'rejected' : null;
+
+  if (!status) {
+    return res.status(400).json({ message: "Action non valide." });
+  }
+
+  const query = "UPDATE memoire SET status = ? WHERE id = ?";
+  db.query(query, [status, id], (err) => {
+    if (err) {
+      return res.status(500).json({ message: "Erreur lors de la mise à jour du statut." });
+    }
+    res.status(200).json({ message: "Statut mis à jour avec succès." });
+  });
+});
+
 
 // Middleware pour les routes non trouvées
 app.use((req, res, next) => {

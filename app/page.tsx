@@ -1,6 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, Truck, CreditCard, Tag, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
+import Image from 'next/image';
+
+// Dans votre code
+<Image src="/images/imag.jpg" alt="Description de l'image" layout="fill" objectFit="cover" />
 
 const books = [
   {
@@ -47,7 +51,7 @@ const books = [
   },
 ];
 
-const homepage = () => {
+const Homepage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -85,66 +89,35 @@ const homepage = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-gray-100 to-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 pr-8">
-              <h2 className="text-4xl font-bold mb-4">
-              <span className="text-blue-500">ARCHIVA</span> 
-                <br />
-                <span className="text-gray-800">Effortless</span> <br/>
-                <span className="text-gray-800">Digital Legacy </span>
-              </h2>
-              <p className="text-lg text-gray-600 mb-6">FOR OUR STUDENT COMMUNITY</p>
-              <Link href="./Sign">
-                <button className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
-                  ADD RESUME
-                </button>
-              </Link>
-            </div>
-          </div>
+      {/* Hero Section with Background Image */}
+      <div >
+        <div className="bg-black bg-opacity-50 bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen"
+        > 
+          {/* Overlay for better text readability */}
+      <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center justify-end">
+        <div className="w-1/2 text-right">
+          <h2 className="text-5xl font-bold mb-4 text-white">
+            <span className="text-blue-400">ARCHIVA</span>
+            <br />
+            <span>Université de Yaoundé I</span>
+          </h2>
+          <p className="text-xl text-gray-200 mb-8">
+            Building Tomorrow's Leaders Through Academic Excellence
+          </p>
+          <Link href="./Sign">
+            <button className="bg-blue-500 text-white px-8 py-4 rounded-lg hover:bg-blue-600 transition-colors text-lg">
+              ADD RESUME
+            </button>
+          </Link>
         </div>
       </div>
-
-      {/* Features */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-4 gap-8">
-          <div className="flex items-center space-x-4">
-            <Truck className="text-blue-500" size={24} />
-            <div>
-              <h3 className="font-semibold">Quick Delivery</h3>
-              <p className="text-sm text-gray-500">Fast and reliable shipping</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <CreditCard className="text-blue-500" size={24} />
-            <div>
-              <h3 className="font-semibold">Pay with Easy</h3>
-              <p className="text-sm text-gray-500">Secure payment options</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Tag className="text-blue-500" size={24} />
-            <div>
-              <h3 className="font-semibold">Best Deal</h3>
-              <p className="text-sm text-gray-500">Competitive prices</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Shield className="text-blue-500" size={24} />
-            <div>
-              <h3 className="font-semibold">Secured Payment</h3>
-              <p className="text-sm text-gray-500">Safe transactions</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    </div>
+  </div>
 
       {/* Bestsellers */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Current Resumes</h2>
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-bold text-gray-800">Current Resumes</h2>
           <a href="#" className="text-blue-500 hover:underline">View All</a>
         </div>
 
@@ -175,4 +148,4 @@ const homepage = () => {
   );
 };
 
-export default homepage;
+export default Homepage;

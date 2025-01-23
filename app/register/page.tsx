@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState } from 'react';
-
 import styled from 'styled-components';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 const Form = () => {
   const [name, setName] = useState('');
@@ -11,8 +10,9 @@ const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confPassword, setConfPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false); // State for password visibility
 
-  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (password !== confPassword) {
@@ -92,33 +92,48 @@ const Form = () => {
           <input
             required
             placeholder="Password"
-            type="password"
+            type={passwordVisible ? "text" : "password"} // Toggle password visibility
             className="input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
+            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
+          </PasswordToggle>
         </label>
         <label>
           <input
             required
             placeholder="Confirm password"
-            type="password"
+            type={passwordVisible ? "text" : "password"} // Toggle password visibility
             className="input"
             value={confPassword}
             onChange={(e) => setConfPassword(e.target.value)}
           />
+          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
+            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
+          </PasswordToggle>
         </label>
         <button className="submit" type="submit">
           Submit
         </button>
         <p className="signin">
-          Already have an account? <a href="./login">Sign in</a>
+          Already have an account? <a href="./Sign">Sign in</a>
         </p>
       </form>
     </StyledWrapper>
   );
 };
 
+const PasswordToggle = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  color: #888;
+`;
 
 const StyledWrapper = styled.div`
   display: flex;
@@ -194,16 +209,6 @@ const StyledWrapper = styled.div`
     outline: 0;
     border: 1px solid rgba(105, 105, 105, 0.397);
     border-radius: 10px;
-  }
-
-  .form label .input + span {
-    position: absolute;
-    left: 10px;
-    top: 15px;
-    color: grey;
-    font-size: 0.9em;
-    cursor: text;
-    transition: 0.3s ease;
   }
 
   .form label .input:placeholder-shown + span {

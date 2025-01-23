@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search } from 'lucide-react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import MySideBar from './ui/sideBar';
 
 const Dashboard = () => {
@@ -18,19 +20,35 @@ const Dashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fonction pour récupérer les mémoires depuis l'API
-  const fetchMemoires = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/memoires');
-      if (response.ok) {
-        const data = await response.json();
-        setMemoires(data.memoires);
-      } else {
-        console.error('Erreur lors de la récupération des mémoires.');
-      }
-    } catch (error) {
-      console.error('Erreur réseau lors de la récupération des mémoires :', error);
+ const fetchMemoires = async () => {
+  try {
+    const response = await fetch('http://localhost:5000/api/memoire');
+    if (!response.ok) {
+      throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
     }
-  };
+    const data = await response.json();
+
+    // Déboguer la réponse pour vérifier sa structure
+    console.log('Données reçues depuis l\'API:', data);
+
+    // Adapter le traitement selon la structure reçue
+    if (Array.isArray(data)) {
+      setMemoires(data);
+    } else if (Array.isArray(data.memoire)) {
+      setMemoires(data.memoire);
+    } else {
+      console.error('Format inattendu des données reçues :', data);
+    }
+  } catch (error) {
+    if (error.name === 'TypeError') {
+      console.error('Erreur réseau ou problème de connexion :', error);
+    } else {
+      console.error('Erreur lors de la récupération des mémoires :', error.message);
+    }
+  }
+};
+
+  
 
   useEffect(() => {
     fetchMemoires();
@@ -58,21 +76,21 @@ const Dashboard = () => {
     formData.append('id_etudiant', 1);
 
     try {
-      const response = await fetch('http://localhost:5000/api/memoires', {
+      const response = await fetch('http://localhost:5000/api/memoire', {
         method: 'POST',
         body: formData,
       });
 
       if (response.ok) {
-        alert('Mémoire ajouté avec succès !');
+        toast.success('Mémoire soumis avec succès ! L’administrateur sera notifié.');
         setShowForm(false);
         fetchMemoires(); // Rafraîchit la liste des mémoires
       } else {
-        alert('Une erreur est survenue lors de l\'ajout.');
+        toast.error('Erreur lors de la soumission.');
       }
     } catch (error) {
       console.error('Erreur lors de la soumission :', error);
-      alert('Impossible de soumettre le formulaire.');
+      toast.error('Erreur réseau.');
     } finally {
       setIsSubmitting(false);
     }
@@ -84,7 +102,7 @@ const Dashboard = () => {
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">My Books Dashboard</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
             <p className="text-gray-600">Manage your academic works and publications</p>
           </div>
           <button

@@ -4,11 +4,13 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { FiEye, FiEyeOff } from 'react-icons/fi'; // Import des icônes d'œil
 
 const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false); // État pour contrôler la visibilité du mot de passe
   const router = useRouter();
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
@@ -23,7 +25,14 @@ const Form = () => {
       });
 
       if (response.ok) {
-        router.push('/login'); // Redirige vers la page mybook
+        const data = await response.json();
+
+        // Vérifier le rôle de l'utilisateur
+        if (data.role === "admin") {
+          router.push('/adminDashboard'); // Rediriger vers le tableau de bord administrateur
+        } else if (data.role ==="etudiant") {
+          router.push('/login'); // Rediriger vers un tableau de bord utilisateur normal
+        }
       } else {
         const data = await response.json();
         setError(data.message || 'Erreur de connexion.');
@@ -48,11 +57,14 @@ const Form = () => {
         </div>
         <div className="input-container">
           <input
-            type="password"
+            type={passwordVisible ? 'text' : 'password'} // Affiche le mot de passe ou le masque
             placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
+            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
+          </PasswordToggle>
         </div>
         {error && <p className="error-message">{error}</p>}
         <button type="submit" className="submit">
@@ -74,9 +86,9 @@ const StyledWrapper = styled.div`
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f3f4f6;  /* Ajoute un fond doux pour la page */
+  background-color: #f3f4f6;
   
- .form {
+  .form {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -87,7 +99,7 @@ const StyledWrapper = styled.div`
     position: relative;
   }
 
-  .form-title{
+  .form-title {
     font-size: 28px;
     color: royalblue;
     font-weight: 600;
@@ -96,6 +108,20 @@ const StyledWrapper = styled.div`
     display: flex;
     align-items: center;
     padding-left: 30px;
+  }
+
+  .form-title::before, .form-title::after {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    left: 0px;
+    background-color: royalblue;
+  }
+
+  .form-title::after {
+    animation: pulse 1s linear infinite; /* Animation de pulsation */
   }
 
   .input-container {
@@ -149,8 +175,27 @@ const StyledWrapper = styled.div`
   }
 
   .signup-link a:hover {
-    color: #1E40AF; /* Bleu lors du survol */
+    color: #1E40AF;
   }
+
+  @keyframes pulse {
+    from {
+      transform: scale(0.9);
+      opacity: 1;
+    }
+    to {
+      transform: scale(1.8);
+      opacity: 0;
+    }
+  }
+`;
+
+const PasswordToggle = styled.div`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
 `;
 
 export default Form;
