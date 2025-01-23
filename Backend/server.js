@@ -191,22 +191,29 @@ app.post("/api/login", (req, res) => {
 
 
 
-// Nouvelle route pour récupérer tous les mémoires
+// Récupérer tous les mémoires avec les informations de l'étudiant
 app.get("/api/memoire", (req, res) => {
-  const query = "SELECT * FROM memoire";
+  const query = `
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, e.name AS etudiant_nom
+    FROM memoire m
+    JOIN etudiant e ON m.id_etudiant = e.id_etudiant
+  `;
 
+  console.log("Exécution de la requête :", query); // Log de la requête
+
+  
   db.query(query, (err, results) => {
     if (err) {
-      console.error("Erreur lors de la récupération des mémoires :", err);
-      return res
-        .status(500)
-        .json({ message: "Erreur lors de la récupération des mémoires." });
+      console.error("Erreur lors de la récupération des mémoires :", err); // Ajoutez cette ligne
+      return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
     }
 
-    // Vérification des résultats dans la console
-    console.log(results);
-
-    res.status(200).json({ memoire: results });
+    if (Array.isArray(results)) {
+      res.status(200).json({ memoire: results });
+    } else {
+      console.error("Erreur : la réponse n'est pas un tableau", results);
+      res.status(500).json({ message: "Erreur interne serveur, réponse incorrecte." });
+    }
   });
 });
 

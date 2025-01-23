@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart } from 'lucide-react';
+import { toast } from 'react-toastify'; // Assurez-vous d'importer la bibliothèque
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -18,6 +19,11 @@ const AdminDashboard = () => {
   const fetchMemoires = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/memoire');
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP : ${response.status}`);
+      }
+  
       const data = await response.json();
   
       // Vérifie si 'data.memoire' existe et est un tableau
@@ -28,6 +34,7 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des mémoires', error);
+      toast.error('Erreur lors de la récupération des mémoires. Veuillez réessayer plus tard.');
     }
   };
 
@@ -47,6 +54,13 @@ const AdminDashboard = () => {
       });
 
       if (response.ok) {
+        // Envoie une notification à l'étudiant si le mémoire est validé
+        if (action === 'validate') {
+          toast.success('Le mémoire a été validé avec succès !');  // Notification succès
+        } else if (action === 'reject') {
+          toast.error('Le mémoire a été rejeté !');  // Notification erreur
+        }
+
         fetchMemoires(); // Rafraîchir la liste des mémoires
       }
     } catch (error) {
@@ -56,58 +70,61 @@ const AdminDashboard = () => {
 
   // Rendu de la liste des mémoires
   const renderMemoires = () => {
-    return(
-    <div>
-      <h2 className="text-2xl font-bold mb-4">Mémoires soumis</h2>
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border border-gray-300 p-2">Libellé</th>
-            <th className="border border-gray-300 p-2">Université</th>
-            <th className="border border-gray-300 p-2">Cycle</th>
-            <th className="border border-gray-300 p-2">speciality</th>
-            <th className="border border-gray-300 p-2">file</th>
-
-            <th className="border border-gray-300 p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {memoires.map((memoire, index) => (
-            <tr key={memoire.id || `${memoire.libelle}-${memoire.university}-${memoire.speciality}-${index}`} className="hover:bg-gray-100">
-              <td className="border border-gray-300 p-2">{memoire.libelle}</td>
-              <td className="border border-gray-300 p-2">{memoire.university}</td>
-              <td className="border border-gray-300 p-2">{memoire.cycle}</td>
-              <td className="border border-gray-300 p-2">{memoire.speciality}</td>
-               <td className="px-6 py-4">
-                      <a
-                        href={`/${memoire.file_path}`}
-                        download
-                        className="text-blue-600 hover:underline"
-                      >
-                        {memoire.file_name}
-                      </a>
+    return (
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Mémoires soumis</h2>
+        <table className="w-full border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border border-gray-300 p-2">Libellé</th>
+              <th className="border border-gray-300 p-2">Université</th>
+              <th className="border border-gray-300 p-2">Cycle</th>
+              <th className="border border-gray-300 p-2">Spécialité</th>
+              <th className="border border-gray-300 p-2">Fichier</th>
+              <th className="border border-gray-300 p-2">Nom de l'étudiant</th>
+              <th className="border border-gray-300 p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {memoires.map((memoire, index) => (
+              <tr key={memoire.id || `${memoire.libelle}-${memoire.university}-${memoire.speciality}-${index}`} className="hover:bg-gray-100">
+                <td className="border border-gray-300 p-2">{memoire.libelle}</td>
+                <td className="border border-gray-300 p-2">{memoire.university}</td>
+                <td className="border border-gray-300 p-2">{memoire.cycle}</td>
+                <td className="border border-gray-300 p-2">{memoire.speciality}</td>
+                <td className="px-6 py-4">
+                  <a
+                    href={`/${memoire.file_path}`}
+                    download
+                    className="text-blue-600 hover:underline"
+                  >
+                    {memoire.file_name}
+                  </a>
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {memoire.etudiant_nom ? memoire.etudiant_nom : 'Nom non disponible'}
                 </td>
                 <td className="px-6 py-4">
-                <button
-                  onClick={() => handleMemoireAction(memoire.id, 'validate')}
-                  className="bg-green-500 text-white px-2 py-1 rounded mr-2"
-                >
-                  Valider
-                </button>
-                <button
-                  onClick={() => handleMemoireAction(memoire.id, 'reject')}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  Rejeter
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+                  <button
+                    onClick={() => handleMemoireAction(memoire.id, 'validate')}
+                    className="bg-green-500 text-white px-2 py-1 rounded mr-2"
+                  >
+                    Valider
+                  </button>
+                  <button
+                    onClick={() => handleMemoireAction(memoire.id, 'reject')}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    Rejeter
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   // Rendu des différentes sections
   const renderContent = () => {
