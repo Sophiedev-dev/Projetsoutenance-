@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
 import Image from 'next/image';
@@ -6,52 +8,32 @@ import Image from 'next/image';
 // Dans votre code
 <Image src="/images/imag.jpg" alt="Description de l'image" layout="fill" objectFit="cover" />
 
-const books = [
-  {
-    id: 1,
-    title: "The Crown",
-    author: "Kiera Cass",
-    price: 15.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23784584'/></svg>"
-  },
-  {
-    id: 2,
-    title: "Trials of Apollo",
-    author: "Rick Riordan",
-    price: 14.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23d4a017'/></svg>"
-  },
-  {
-    id: 3,
-    title: "Big Magic",
-    author: "Elizabeth Gilbert",
-    price: 12.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23ff69b4'/></svg>"
-  },
-  {
-    id: 4,
-    title: "Frost Arch",
-    author: "Kate Bloomfield",
-    price: 9.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23333333'/></svg>"
-  },
-  {
-    id: 5,
-    title: "Lonely City",
-    author: "Sample Author",
-    price: 19.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%234a4a4a'/></svg>"
-  },
-  {
-    id: 6,
-    title: "The Martial",
-    author: "Andy Weir",
-    price: 22.99,
-    image: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><rect width='100%' height='100%' fill='%23ff6b35'/></svg>"
-  },
-];
-
 const Homepage = () => {
+  const [memoires, setMemoires] = useState([]);
+
+  // Fonction pour récupérer les mémoires validés
+  const fetchMemoires = async (status = 'validated') => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire?status=${status}`);
+      if (!response.ok) {
+        throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (Array.isArray(data.memoire)) {
+        setMemoires(data.memoire);  // Mettre à jour l'état avec les mémoires récupérées
+      } else {
+        console.error('Format inattendu des données reçues :', data);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des mémoires :', error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchMemoires('validated'); // Charger uniquement les mémoires validés
+  }, []);
+  
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -90,29 +72,28 @@ const Homepage = () => {
       </header>
 
       {/* Hero Section with Background Image */}
-      <div >
-        <div className="bg-black bg-opacity-50 bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen"
-        > 
+      <div>
+        <div className="bg-black bg-opacity-50 bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen">
           {/* Overlay for better text readability */}
-      <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center justify-end">
-        <div className="w-1/2 text-right">
-          <h2 className="text-5xl font-bold mb-4 text-white">
-            <span className="text-blue-400">ARCHIVA</span>
-            <br />
-            <span>Université de Yaoundé I</span>
-          </h2>
-          <p className="text-xl text-gray-200 mb-8">
-            Building Tomorrow's Leaders Through Academic Excellence
-          </p>
-          <Link href="./Sign">
-            <button className="bg-blue-500 text-white px-8 py-4 rounded-lg hover:bg-blue-600 transition-colors text-lg">
-              ADD RESUME
-            </button>
-          </Link>
+          <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center justify-end">
+            <div className="w-1/2 text-right">
+              <h2 className="text-5xl font-bold mb-4 text-white">
+                <span className="text-blue-400">ARCHIVA</span>
+                <br />
+                <span>Université de Yaoundé I</span>
+              </h2>
+              <p className="text-xl text-gray-200 mb-8">
+                Building Tomorrow's Leaders Through Academic Excellence
+              </p>
+              <Link href="./Sign">
+                <button className="bg-blue-500 text-white px-8 py-4 rounded-lg hover:bg-blue-600 transition-colors text-lg">
+                  ADD RESUME
+                </button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 
       {/* Bestsellers */}
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -123,16 +104,16 @@ const Homepage = () => {
 
         <div className="relative">
           <div className="flex space-x-6 overflow-x-auto pb-4">
-            {books.map((book) => (
-              <div key={book.id} className="flex-none w-48">
+            {memoires.map((memoire) => (
+              <div key={memoire.id_memoire} className="flex-none w-48">
                 <img
-                  src={book.image}
-                  alt={book.title}
+                  src={memoire.file_path}  // Remplacer par le chemin du fichier
+                  alt={memoire.libelle}
                   className="w-full h-64 object-cover rounded-lg shadow-md mb-4"
                 />
-                <h3 className="font-semibold">{book.title}</h3>
-                <p className="text-sm text-gray-500">{book.author}</p>
-                <p className="text-blue-500 font-semibold mt-2">${book.price.toFixed(2)}</p>
+                <h3 className="font-semibold">{memoire.libelle}</h3>
+                <p className="text-sm text-gray-500">{memoire.etudiant_nom}</p>
+                <p className="text-blue-500 font-semibold mt-2">Validated</p> {/* Affichage du statut */}
               </div>
             ))}
           </div>

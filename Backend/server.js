@@ -251,7 +251,7 @@ app.get("/api/memoire", (req, res) => {
 //updateMemoire
 
 
-
+//Recuperer les memoires valider ou rejeter 
 app.patch("/api/memoire/:id", (req, res) => {
   const idMemoire = req.params.id;
   const { action } = req.body;
@@ -288,6 +288,36 @@ app.patch("/api/memoire/:id", (req, res) => {
   });
 });
 
+//recuperer les memoires valider pour le home 
+app.get("/api/memoire", (req, res) => {
+  const { status } = req.query; // Récupérer le paramètre de filtre 'status'
+
+  // Construire la requête avec un filtre conditionnel
+  let query = `
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, e.name AS etudiant_nom
+    FROM memoire m
+    JOIN etudiant e ON m.id_etudiant = e.id_etudiant
+  `;
+
+  const queryParams = [];
+
+  if (status) {
+    query += ` WHERE m.status = ?`; // Ajouter un filtre si 'status' est fourni
+    queryParams.push(status);
+  }
+
+  console.log("Exécution de la requête :", query, queryParams);
+
+  db.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error("Erreur lors de la récupération des mémoires :", err);
+      return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
+    }
+
+    res.status(200).json({ memoire: results });
+  });
+});
+
 
 
 // // Récupérer tous les mémoires
@@ -318,6 +348,7 @@ app.get("/api/admin", (req, res) => {
     res.status(200).json(results[0]);
   });
 });
+
 
 // Mettre à jour le statut d'une mémoire
 // app.patch("/api/memoire/:id", (req, res) => {
