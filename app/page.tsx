@@ -5,13 +5,9 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
 import Image from 'next/image';
 
-// Dans votre code
-<Image src="/images/imag.jpg" alt="Description de l'image" layout="fill" objectFit="cover" />
-
 const Homepage = () => {
   const [memoires, setMemoires] = useState([]);
 
-  // Fonction pour récupérer les mémoires validés
   const fetchMemoires = async (status = 'validated') => {
     try {
       const response = await fetch(`http://localhost:5000/api/memoire?status=${status}`);
@@ -20,7 +16,7 @@ const Homepage = () => {
       }
       const data = await response.json();
       if (Array.isArray(data.memoire)) {
-        setMemoires(data.memoire);  // Mettre à jour l'état avec les mémoires récupérées
+        setMemoires(data.memoire);
       } else {
         console.error('Format inattendu des données reçues :', data);
       }
@@ -30,40 +26,49 @@ const Homepage = () => {
   };
 
   useEffect(() => {
-    fetchMemoires('validated'); // Charger uniquement les mémoires validés
+    fetchMemoires('validated');
   }, []);
-  
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Header avec effet de verre */}
+      <header className="backdrop-blur-md bg-white/70 fixed w-full z-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
-            <div className="text-2xl font-bold text-gray-800">📚 BANK-MEMO</div>
+            <div className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              BANK-MEMO
+            </div>
             
-            {/* Search Bar */}
+            {/* Barre de recherche modernisée */}
             <div className="flex-1 max-w-xl mx-8">
-              <div className="relative">
+              <div className="relative group">
                 <input
                   type="text"
-                  placeholder="Search over 30 million book titles"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Rechercher un mémoire..."
+                  className="w-full px-6 py-3 border-none rounded-full bg-gray-100/80 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white"
                 />
-                <Search className="absolute right-3 top-2.5 text-gray-400" size={20} />
+                <Search className="absolute right-4 top-3 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <ShoppingCart className="text-gray-600" size={24} />
-              <User className="text-gray-600" size={24} />
+            <div className="flex items-center space-x-6">
+              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <ShoppingCart className="text-gray-600 hover:text-blue-500 transition-colors" size={24} />
+              </button>
+              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <User className="text-gray-600 hover:text-blue-500 transition-colors" size={24} />
+              </button>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation avec effet de survol animé */}
           <nav className="flex space-x-8 py-4">
             {['Home', 'Books', 'Magazines', 'Textbooks', 'Audiobooks', 'Recommended', 'Sale'].map((item) => (
-              <a key={item} href="#" className="text-gray-600 hover:text-blue-500">
+              <a
+                key={item}
+                href="#"
+                className="relative text-gray-600 hover:text-blue-500 transition-colors duration-300 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-blue-500 hover:after:w-full after:transition-all"
+              >
                 {item}
               </a>
             ))}
@@ -71,22 +76,24 @@ const Homepage = () => {
         </div>
       </header>
 
-      {/* Hero Section with Background Image */}
+      {/* Section héro avec overlay amélioré */}
       <div>
-        <div className="bg-black bg-opacity-50 bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen">
-          {/* Overlay for better text readability */}
-          <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center justify-end">
-            <div className="w-1/2 text-right">
-              <h2 className="text-5xl font-bold mb-4 text-white">
-                <span className="text-blue-400">ARCHIVA</span>
+        <div className="relative bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen">
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
+          <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center">
+            <div className="w-1/2 relative z-10">
+              <h2 className="text-6xl font-black mb-6 text-white leading-tight">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                  ARCHIVA
+                </span>
                 <br />
-                <span>Université de Yaoundé I</span>
+                <span className="text-4xl">Université de Yaoundé I</span>
               </h2>
-              <p className="text-xl text-gray-200 mb-8">
+              <p className="text-xl text-gray-200 mb-8 font-light">
                 Building Tomorrow's Leaders Through Academic Excellence
               </p>
               <Link href="./Sign">
-                <button className="bg-blue-500 text-white px-8 py-4 rounded-lg hover:bg-blue-600 transition-colors text-lg">
+                <button className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-10 py-4 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 text-lg font-medium">
                   ADD RESUME
                 </button>
               </Link>
@@ -95,32 +102,43 @@ const Homepage = () => {
         </div>
       </div>
 
-      {/* Bestsellers */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold text-gray-800">Current Resumes</h2>
-          <a href="#" className="text-blue-500 hover:underline">View All</a>
+      {/* Section des mémoires avec effet de carte moderne */}
+      <div className="max-w-7xl mx-auto px-4 py-16">
+        <div className="flex items-center justify-between mb-12">
+          <h2 className="text-4xl font-bold text-gray-800">Current Resumes</h2>
+          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors text-lg">
+            View All →
+          </a>
         </div>
 
         <div className="relative">
-          <div className="flex space-x-6 overflow-x-auto pb-4">
+          <div className="flex space-x-8 overflow-x-auto pb-8 scrollbar-hide">
             {memoires.map((memoire) => (
-              <div key={memoire.id_memoire} className="flex-none w-48">
-                <img
-                  src={memoire.file_path}  // Remplacer par le chemin du fichier
-                  alt={memoire.libelle}
-                  className="w-full h-64 object-cover rounded-lg shadow-md mb-4"
-                />
-                <h3 className="font-semibold">{memoire.libelle}</h3>
-                <p className="text-sm text-gray-500">{memoire.etudiant_nom}</p>
-                <p className="text-blue-500 font-semibold mt-2">Validated</p> {/* Affichage du statut */}
+              <div
+                key={memoire.id_memoire}
+                className="flex-none w-64 transform hover:scale-105 transition-all duration-300"
+              >
+                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                  <img
+                    src={memoire.file_path}
+                    alt={memoire.libelle}
+                    className="w-full h-80 object-cover"
+                  />
+                  <div className="p-6">
+                    <h3 className="font-bold text-xl mb-2">{memoire.libelle}</h3>
+                    <p className="text-gray-600">{memoire.etudiant_nom}</p>
+                    <span className="inline-block mt-4 px-4 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
+                      Validated
+                    </span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
-          <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md">
+          <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
             <ChevronLeft size={24} />
           </button>
-          <button className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md">
+          <button className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
             <ChevronRight size={24} />
           </button>
         </div>

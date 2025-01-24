@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart } from 'lucide-react';
-import { toast } from 'react-toastify'; // Assurez-vous d'importer la bibliothèque
+import { BarChart, Users, FileText, Settings, ChevronDown } from 'lucide-react';
+import { toast, ToastContainer } from 'react-toastify';
+import { motion } from 'framer-motion';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -15,18 +16,13 @@ const AdminDashboard = () => {
   });
   const [filter, setFilter] = useState('all');
 
-  // Fonction pour récupérer les mémoires depuis le serveur
   const fetchMemoires = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/memoire');
-      
       if (!response.ok) {
         throw new Error(`Erreur HTTP : ${response.status}`);
       }
-  
       const data = await response.json();
-  
-      // Vérifie si 'data.memoire' existe et est un tableau
       if (Array.isArray(data.memoire)) {
         setMemoires(data.memoire);
       } else {
@@ -42,7 +38,6 @@ const AdminDashboard = () => {
     fetchMemoires();
   }, []);
 
-  // Gérer la validation ou le rejet d'une mémoire
   const handleMemoireAction = async (memoireId, action) => {
     try {
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
@@ -52,90 +47,116 @@ const AdminDashboard = () => {
         },
         body: JSON.stringify({ action }),
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la mise à jour du mémoire.');
       }
-  
+
       const responseData = await response.json();
-      console.log(responseData.message); // Optionnel : log du message de l'API
-  
-      // Notifications en fonction de l'action
+
       if (action === 'validated') {
         toast.success('Le mémoire a été validé avec succès !');
       } else if (action === 'rejected') {
         toast.error('Le mémoire a été rejeté !');
       }
-  
-      fetchMemoires(); // Rafraîchir la liste des mémoires
+
+      fetchMemoires();
     } catch (error) {
       console.error("Erreur lors de l'action sur le mémoire :", error.message);
       toast.error("Une erreur est survenue, veuillez réessayer.");
     }
   };
-  
-  
 
-  // Rendu de la liste des mémoires
   const renderMemoires = () => {
     return (
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Mémoires soumis</h2>
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border border-gray-300 p-2">Libellé</th>
-              <th className="border border-gray-300 p-2">Université</th>
-              <th className="border border-gray-300 p-2">Cycle</th>
-              <th className="border border-gray-300 p-2">Spécialité</th>
-              <th className="border border-gray-300 p-2">Fichier</th>
-              <th className="border border-gray-300 p-2">Nom de l'étudiant</th>
-              <th className="border border-gray-300 p-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {memoires.map((memoire, index) => (
-              <tr key={memoire.id || `${memoire.libelle}-${memoire.university}-${memoire.speciality}-${index}`} className="hover:bg-gray-100">
-                <td className="border border-gray-300 p-2">{memoire.libelle}</td>
-                <td className="border border-gray-300 p-2">{memoire.university}</td>
-                <td className="border border-gray-300 p-2">{memoire.cycle}</td>
-                <td className="border border-gray-300 p-2">{memoire.speciality}</td>
-                <td className="px-6 py-4">
-                  <a
-                    href={`/${memoire.file_path}`}
-                    download
-                    className="text-blue-600 hover:underline"
-                  >
-                    {memoire.file_name}
-                  </a>
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {memoire.etudiant_nom ? memoire.etudiant_nom : 'Nom non disponible'}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleMemoireAction(memoire.id_memoire, 'validated')}
-                    className="bg-green-500 text-white px-2 py-1 rounded mr-2"
-                  >
-                    Valider
-                  </button>
-                  <button
-                    onClick={() => handleMemoireAction(memoire.id_memoire, 'rejected')}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Rejeter
-                  </button>
-                </td>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="bg-white rounded-2xl shadow-lg p-6 backdrop-blur-lg bg-white/90"
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Mémoires soumis
+          </h2>
+          <div className="flex gap-4">
+            <select
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="pending">En attente</option>
+              <option value="validated">Validés</option>
+              <option value="rejected">Rejetés</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Libellé</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Université</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Cycle</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Spécialité</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Fichier</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Étudiant</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {memoires.map((memoire, index) => (
+                <motion.tr
+                  key={memoire.id || `${memoire.libelle}-${index}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="hover:bg-gray-50/50 transition-colors duration-200"
+                >
+                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.libelle}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.university}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.cycle}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.speciality}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <a
+                      href={`/${memoire.file_path}`}
+                      download
+                      className="text-blue-600 hover:text-purple-600 transition-colors flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      {memoire.file_name}
+                    </a>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">
+                    {memoire.etudiant_nom || 'Non disponible'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleMemoireAction(memoire.id_memoire, 'validated')}
+                        className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-green-400 to-green-500 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+                      >
+                        Valider
+                      </button>
+                      <button
+                        onClick={() => handleMemoireAction(memoire.id_memoire, 'rejected')}
+                        className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-red-400 to-red-500 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+                      >
+                        Rejeter
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
     );
   };
 
-  // Rendu des différentes sections
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -148,28 +169,49 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-blue-900 text-white p-4">
-        <h1 className="text-2xl font-bold mb-8">Admin Panel</h1>
-        <nav className="space-y-4">
-          {[{ name: 'dashboard', icon: <BarChart />, label: 'Tableau de Bord' }].map((item) => (
-            <button
-              key={item.name}
-              onClick={() => setActiveTab(item.name)}
-              className={`flex items-center w-full p-2 rounded ${
-                activeTab === item.name ? 'bg-blue-700' : 'hover:bg-blue-600'
-              }`}
-            >
-              {item.icon}
-              <span className="ml-2">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      <motion.div
+        initial={{ x: -250 }}
+        animate={{ x: 0 }}
+        className="w-64 bg-white shadow-lg"
+      >
+        <div className="p-6">
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-8">
+            Admin Panel
+          </h1>
+          <nav className="space-y-2">
+            {[
+              { name: 'dashboard', icon: <BarChart size={20} />, label: 'Tableau de Bord' },
+              { name: 'users', icon: <Users size={20} />, label: 'Utilisateurs' },
+              { name: 'settings', icon: <Settings size={20} />, label: 'Paramètres' },
+            ].map((item) => (
+              <button
+                key={item.name}
+                onClick={() => setActiveTab(item.name)}
+                className={`flex items-center w-full p-3 rounded-xl transition-all duration-200 ${
+                  activeTab === item.name
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {item.icon}
+                <span className="ml-3 font-medium">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </motion.div>
 
-      {/* Contenu principal */}
-      <div className="flex-1 p-8">{renderContent()}</div>
+      <div className="flex-1 p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          {renderContent()}
+        </motion.div>
+      </div>
+      <ToastContainer />
     </div>
   );
 };

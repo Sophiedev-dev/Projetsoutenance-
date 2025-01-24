@@ -52,7 +52,7 @@ const Form = () => {
   };
 
   return (
-    <StyledWrapper>
+    <StyledWrapper >
       <form className="form" onSubmit={handleSubmit}>
         <p className="title">Sign Up</p>
         <p className="message">Signup now and get full access to our app.</p>

@@ -1,19 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import styled from 'styled-components';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiEye, FiEyeOff } from 'react-icons/fi'; // Import des icônes d'œil
+import { Eye, EyeOff } from 'lucide-react';
 
 const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false); // État pour contrôler la visibilité du mot de passe
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: { preventDefault: () => void }) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
   
@@ -26,16 +25,12 @@ const Form = () => {
   
       if (response.ok) {
         const data = await response.json();
-  
-        // Stocker l'objet utilisateur complet dans localStorage
         localStorage.setItem('user', JSON.stringify(data));
   
-        // Rediriger en fonction du rôle de l'utilisateur
         if (data.role === 'admin') {
-          router.push('/adminDashboard'); // Rediriger vers le tableau de bord admin
+          router.push('/adminDashboard');
         } else if (data.role === 'etudiant') {
-          router.push('/login'); // Rediriger vers le tableau de bord utilisateur
-          
+          router.push('/login');
         }
       } else {
         const data = await response.json();
@@ -45,162 +40,92 @@ const Form = () => {
       setError('Erreur de connexion au serveur.');
     }
   };
-  
 
   return (
-    <StyledWrapper>
-      <form className="form" onSubmit={handleSubmit}>
-        <p className="form-title">Sign in</p>
-        <div className="input-container">
-          <input
-            type="email"
-            placeholder="Enter email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <span></span>
-        </div>
-        <div className="input-container">
-          <input
-            type={passwordVisible ? 'text' : 'password'} // Affiche le mot de passe ou le masque
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
-            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
-          </PasswordToggle>
-        </div>
-        {error && <p className="error-message">{error}</p>}
-        <button type="submit" className="submit">
-          Sign in
-        </button>
-        <p className="signup-link">
-          No account?
-          <Link href='./register'>
-            Sign up
-          </Link>
-        </p>
-      </form>
-    </StyledWrapper>
+    
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md ">
+        <form 
+          onSubmit={handleSubmit}
+          className="backdrop-blur-lg bg-white/80 p-8 rounded-2xl shadow-xl space-y-6 border border-gray-100"
+        >
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              Welcome Back
+            </h1>
+            <p className="text-gray-500">Sign in to your account</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Password</label>
+              <div className="relative">
+                <input
+                  type={passwordVisible ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPasswordVisible(!passwordVisible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-500 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
+          >
+            Sign in
+          </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white/80 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="text-center text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link 
+              href="./register"
+              className="font-medium text-blue-600 hover:text-purple-600 transition-colors"
+            >
+              Sign up
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
-
-const StyledWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f3f4f6;
-  
-  .form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 350px;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 20px;
-    position: relative;
-  }
-
-  .form-title {
-    font-size: 28px;
-    color: royalblue;
-    font-weight: 600;
-    letter-spacing: -1px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding-left: 30px;
-  }
-
-  .form-title::before, .form-title::after {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    left: 0px;
-    background-color: royalblue;
-  }
-
-  .form-title::after {
-    animation: pulse 1s linear infinite; /* Animation de pulsation */
-  }
-
-  .input-container {
-    position: relative;
-  }
-
-  .input-container input, .form button {
-    outline: none;
-    border: 1px solid #e5e7eb;
-    margin: 8px 0;
-  }
-
-  .input-container input {
-    background-color: #fff;
-    padding: 1rem;
-    padding-right: 3rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    width: 300px;
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  }
-
-  .submit {
-    display: block;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-    background-color: #4F46E5;
-    color: #ffffff;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    font-weight: 500;
-    width: 100%;
-    border-radius: 0.5rem;
-    text-transform: uppercase;
-  }
-
-  .signup-link {
-    color: #6B7280;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    text-align: center;
-  }
-
-  .signup-link a {
-    text-decoration: underline;
-    color: #6B7280;
-    transition: color 0.3s ease;
-  }
-
-  .signup-link a:hover {
-    color: #1E40AF;
-  }
-
-  @keyframes pulse {
-    from {
-      transform: scale(0.9);
-      opacity: 1;
-    }
-    to {
-      transform: scale(1.8);
-      opacity: 0;
-    }
-  }
-`;
-
-const PasswordToggle = styled.div`
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-`;
 
 export default Form;
