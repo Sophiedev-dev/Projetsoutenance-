@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, FileText, Settings, ChevronDown } from 'lucide-react';
+import { BarChart, Users, FileText, Settings, ChevronDown, Book } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
 
@@ -182,7 +182,7 @@ const AdminDashboard = () => {
           <nav className="space-y-2">
             {[
               { name: 'dashboard', icon: <BarChart size={20} />, label: 'Tableau de Bord' },
-              { name: 'users', icon: <Users size={20} />, label: 'Utilisateurs' },
+              { name: 'users', icon: <Book size={20} />, label: 'Utilisateurs', path: '/login',  },
               { name: 'settings', icon: <Settings size={20} />, label: 'Paramètres' },
             ].map((item) => (
               <button

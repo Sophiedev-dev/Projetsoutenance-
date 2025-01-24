@@ -110,17 +110,17 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       <MySideBar />
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-            <p className="text-gray-600">Manage your academic works and publications</p>
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Dashboard</h2>
+            <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
           >
             <Plus className="mr-2" size={20} />
             Add New Book
@@ -128,29 +128,29 @@ const Dashboard = () => {
         </div>
 
         {showForm && (
-          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h3 className="text-xl font-semibold mb-4">Add New Book</h3>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <div className="backdrop-blur-lg bg-white/80 p-8 rounded-2xl shadow-xl mb-8 border border-gray-100">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6">Add New Book</h3>
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
               {['libelle', 'annee', 'specialite', 'universite'].map((field) => (
                 <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
                     {field}
                   </label>
                   <input
                     type={field === 'annee' ? 'date' : 'text'}
                     name={field}
                     onChange={handleChange}
-                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                     required
                   />
                 </div>
               ))}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cycle</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Cycle</label>
                 <select
                   name="cycle"
                   onChange={handleChange}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                   required
                 >
                   <option>Bachelor</option>
@@ -159,27 +159,27 @@ const Dashboard = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">File</label>
                 <input
                   type="file"
                   name="file"
                   onChange={handleChange}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                   required
                 />
               </div>
-              <div className="col-span-2 flex justify-end space-x-2">
+              <div className="col-span-2 flex justify-end space-x-4">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="px-6 py-3 text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition-all duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
                 >
                   {isSubmitting ? 'Submitting...' : 'Save Book'}
                 </button>
@@ -188,34 +188,34 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-4 border-b">
+        <div className="backdrop-blur-lg bg-white/80 rounded-2xl shadow-xl border border-gray-100">
+          <div className="p-6 border-b border-gray-100">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
                 placeholder="Search books..."
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
               />
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50/50">
                 <tr>
                   {['Title', 'Year', 'Cycle', 'Speciality', 'University', 'File'].map((header) => (
                     <th
                       key={header}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-600"
                     >
                       {header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {memoires.map((memoire, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                  <tr key={index} className="hover:bg-gray-50/50 transition-colors duration-150">
                     <td className="px-6 py-4">{memoire.libelle}</td>
                     <td className="px-6 py-4">{new Date(memoire.annee).toLocaleDateString()}</td>
                     <td className="px-6 py-4">{memoire.cycle}</td>
@@ -225,7 +225,7 @@ const Dashboard = () => {
                       <a
                         href={`/${memoire.file_path}`}
                         download
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
                       >
                         {memoire.file_name}
                       </a>

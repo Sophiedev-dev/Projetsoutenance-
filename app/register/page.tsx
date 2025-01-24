@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import styled from 'styled-components';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { Eye, EyeOff } from 'lucide-react';
 
 const Form = () => {
   const [name, setName] = useState('');
@@ -10,7 +9,7 @@ const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confPassword, setConfPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false); // State for password visibility
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,206 +51,112 @@ const Form = () => {
   };
 
   return (
-    <StyledWrapper >
-      <form className="form" onSubmit={handleSubmit}>
-        <p className="title">Sign Up</p>
-        <p className="message">Signup now and get full access to our app.</p>
-        <div className="flex">
-          <label>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <form onSubmit={handleSubmit} className="backdrop-blur-lg bg-white/80 p-8 rounded-2xl shadow-xl space-y-6 border border-gray-100">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              Create Account
+            </h1>
+            <p className="text-gray-500">Sign up and get full access to our app</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">First Name</label>
+              <input
+                required
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                placeholder="John"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Last Name</label>
+              <input
+                required
+                type="text"
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                placeholder="Doe"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Email</label>
             <input
               required
-              placeholder="First name"
-              type="text"
-              className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+              placeholder="john.doe@example.com"
             />
-          </label>
-          <label>
-            <input
-              required
-              placeholder="Last name"
-              type="text"
-              className="input"
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
-            />
-          </label>
-        </div>
-        <label>
-          <input
-            required
-            placeholder="Email"
-            type="email"
-            className="input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label>
-          <input
-            required
-            placeholder="Password"
-            type={passwordVisible ? "text" : "password"} // Toggle password visibility
-            className="input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
-            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
-          </PasswordToggle>
-        </label>
-        <label>
-          <input
-            required
-            placeholder="Confirm password"
-            type={passwordVisible ? "text" : "password"} // Toggle password visibility
-            className="input"
-            value={confPassword}
-            onChange={(e) => setConfPassword(e.target.value)}
-          />
-          <PasswordToggle onClick={() => setPasswordVisible(!passwordVisible)}>
-            {passwordVisible ? <FiEyeOff /> : <FiEye />} {/* Affiche l'icône de l'œil */}
-          </PasswordToggle>
-        </label>
-        <button className="submit" type="submit">
-          Submit
-        </button>
-        <p className="signin">
-          Already have an account? <a href="./Sign">Sign in</a>
-        </p>
-      </form>
-    </StyledWrapper>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Password</label>
+            <div className="relative">
+              <input
+                required
+                type={passwordVisible ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onClick={() => setPasswordVisible(!passwordVisible)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+            <div className="relative">
+              <input
+                required
+                type={passwordVisible ? "text" : "password"}
+                value={confPassword}
+                onChange={(e) => setConfPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
+                placeholder="Confirm your password"
+              />
+              <button
+                type="button"
+                onClick={() => setPasswordVisible(!passwordVisible)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
+          >
+            Create Account
+          </button>
+
+          <div className="text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <a href="./Sign" className="font-medium text-blue-600 hover:text-purple-600 transition-colors">
+              Sign in
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
-
-const PasswordToggle = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  color: #888;
-`;
-
-const StyledWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f5f5f5; /* Une couleur de fond agréable */
-  
-  .form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 350px;
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 20px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  }
-
-  .title {
-    font-size: 28px;
-    color: royalblue;
-    font-weight: 600;
-    letter-spacing: -1px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    padding-left: 30px;
-  }
-
-  .title::before, .title::after {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    left: 0px;
-    background-color: royalblue;
-  }
-
-  .title::after {
-    animation: pulse 1s linear infinite;
-  }
-
-  .message, .signin {
-    color: rgba(88, 87, 87, 0.822);
-    font-size: 14px;
-    text-align: center;
-  }
-
-  .signin a {
-    color: royalblue;
-    text-decoration: none;
-  }
-
-  .signin a:hover {
-    text-decoration: underline;
-  }
-
-  .flex {
-    display: flex;
-    width: 100%;
-    gap: 6px;
-  }
-
-  .form label {
-    position: relative;
-  }
-
-  .form label .input {
-    width: 100%;
-    padding: 10px 10px 20px 10px;
-    outline: 0;
-    border: 1px solid rgba(105, 105, 105, 0.397);
-    border-radius: 10px;
-  }
-
-  .form label .input:placeholder-shown + span {
-    top: 15px;
-    font-size: 0.9em;
-  }
-
-  .form label .input:focus + span, .form label .input:valid + span {
-    top: 30px;
-    font-size: 0.7em;
-    font-weight: 600;
-  }
-
-  .form label .input:valid + span {
-    color: green;
-  }
-
-  .submit {
-    border: none;
-    outline: none;
-    background-color: royalblue;
-    padding: 10px;
-    border-radius: 10px;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-
-  .submit:hover {
-    background-color: rgb(56, 90, 194);
-  }
-
-  @keyframes pulse {
-    from {
-      transform: scale(0.9);
-      opacity: 1;
-    }
-    to {
-      transform: scale(1.8);
-      opacity: 0;
-    }
-  }
-`;
 
 export default Form;
