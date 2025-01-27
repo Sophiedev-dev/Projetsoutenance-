@@ -4,14 +4,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
 import Image from 'next/image';
-import { Worker, Viewer  } from "@react-pdf-viewer/core";
-import {  defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
+import { Worker, Viewer} from "@react-pdf-viewer/core";
+import {  defaultLayoutPlugin } from "@react-pdf-viewer/default-layout"; 
 import { pdfjs } from 'react-pdf';
 
 // Styles pour react-pdf-viewer
-
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`;
 
@@ -39,6 +38,7 @@ const Homepage = () => {
       console.error('Erreur lors de la récupération des mémoires :', error.message);
     }
   };
+  
 
   useEffect(() => {
     fetchMemoires('validated');
@@ -46,15 +46,12 @@ const Homepage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-      {/* Header avec effet de verre */}
       <header className="backdrop-blur-md bg-white/70 fixed w-full z-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
             <div className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
               BANK-MEMO
             </div>
-            
-            {/* Barre de recherche modernisée */}
             <div className="flex-1 max-w-xl mx-8">
               <div className="relative group">
                 <input
@@ -65,7 +62,6 @@ const Homepage = () => {
                 <Search className="absolute right-4 top-3 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
               </div>
             </div>
-            
             <div className="flex items-center space-x-6">
               <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                 <ShoppingCart className="text-gray-600 hover:text-blue-500 transition-colors" size={24} />
@@ -75,8 +71,6 @@ const Homepage = () => {
               </button>
             </div>
           </div>
-
-          {/* Navigation avec effet de survol animé */}
           <nav className="flex space-x-8 py-4">
             {['Home', 'Books', 'Magazines', 'Textbooks', 'Audiobooks', 'Recommended', 'Sale'].map((item) => (
               <a
@@ -91,52 +85,17 @@ const Homepage = () => {
         </div>
       </header>
 
-      {/* Section héro avec overlay amélioré */}
-      <div>
-        <div className="relative bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
-          <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center">
-            <div className="w-1/2 relative z-10">
-              <h2 className="text-6xl font-black mb-6 text-white leading-tight">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                  ARCHIVA
-                </span>
-                <br />
-                <span className="text-4xl">Université de Yaoundé I</span>
-              </h2>
-              <p className="text-xl text-gray-200 mb-8 font-light">
-                Building Tomorrow's Leaders Through Academic Excellence
-              </p>
-              <Link href="./Sign">
-                <button className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-10 py-4 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 text-lg font-medium">
-                  ADD RESUME
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+    
 
-      {/* Section des mémoires avec effet de carte moderne */}
       <div className="max-w-7xl mx-auto px-4 py-16">
-        <div className="flex items-center justify-between mb-12">
-          <h2 className="text-4xl font-bold text-gray-800">Current Resumes</h2>
-          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors text-lg">
-            View All →
-          </a>
-        </div>
-
-        <div className="relative">
         <div className="flex space-x-8 overflow-x-auto pb-8 scrollbar-hide">
-            {/* Liste des mémoires */}
-            <div className="flex space-x-8 overflow-x-auto">
-                {memoires.map((memoire) => (
-                    <div
-                        key={memoire.id_memoire}
-                        className="flex-none w-64 transform hover:scale-105 transition-all duration-300 cursor-pointer"
-                        onClick={() => setSelectedMemoire(memoire)}
-                    >
-                       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          {memoires.map((memoire) => (
+            <div
+              key={memoire.id_memoire}
+              className="flex-none w-64 transform hover:scale-105 transition-all duration-300 cursor-pointer"
+              onClick={() => setSelectedMemoire(memoire)}
+            >
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
                 <img
                   src={`http://localhost:5000/${memoire.file_path}`}
                   alt={memoire.libelle}
@@ -155,13 +114,13 @@ const Homepage = () => {
                     Validated
                   </span>
                 </div>
-                       </div>
-                    </div>
-                ))}
+              </div>
             </div>
+          ))}
+        </div>
 
-            {/* Prévisualisation du PDF */}
-            {selectedMemoire && (
+        {/* Prévisualisation du PDF */}
+        {selectedMemoire && (
   <div className="w-full h-screen bg-gray-50 p-4">
     <h2 className="text-xl font-bold mb-4">
       Prévisualisation : {selectedMemoire.libelle}
@@ -175,15 +134,7 @@ const Homepage = () => {
       </Worker>
     </div>
   </div>
-            )}
-        </div>
-          <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
-            <ChevronLeft size={24} />
-          </button>
-          <button className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
-            <ChevronRight size={24} />
-          </button>
-        </div>
+)}
       </div>
     </div>
   );

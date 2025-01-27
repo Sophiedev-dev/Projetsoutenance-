@@ -40,7 +40,17 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  fileFilter: (req, file, cb) => {
+    // Vérification que le fichier est un PDF
+    if (file.mimetype !== "application/pdf") {
+      return cb(new Error("Le fichier doit être un PDF."));
+    }
+    cb(null, true);
+  },
+
+});
 
 // Crée le dossier des fichiers si nécessaire
 if (!fs.existsSync("uploads")) {
@@ -49,7 +59,7 @@ if (!fs.existsSync("uploads")) {
 
 // Route pour la soumission des données
 app.post("/api/memoire", upload.single("file"), (req, res) => {
-  const { libelle, annee, cycle, speciality, university, id_etudiant } =
+  const { libelle, annee, cycle, speciality, university, description, id_etudiant } =
     req.body;
 
   if (!req.file) {
@@ -60,8 +70,8 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
   const fileName = req.file.originalname;
 
   const query = `
-    INSERT INTO memoire (libelle, annee, cycle, speciality, university, file_path, file_name, id_etudiant)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO memoire (libelle, annee, cycle, speciality, university, description, file_path, file_name, id_etudiant)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const values = [
     libelle,
@@ -69,6 +79,7 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
     cycle,
     speciality,
     university,
+    description,
     filePath,
     fileName,
     id_etudiant,
@@ -188,6 +199,22 @@ app.post("/api/login", (req, res) => {
     });
 });
 
+app.get("/uploads/:filename", (req, res) => {
+  const fileName = req.params.filename;
+  const filePath = path.join(__dirname, "uploads", fileName);
+
+  console.log("Téléchargement demandé pour le fichier :", filePath);
+
+  fs.exists(filePath, (exists) => {
+    if (exists) {
+      res.sendFile(filePath);
+    } else {
+      console.error("Fichier non trouvé :", filePath);
+      res.status(404).json({ message: "Fichier non trouvé." });
+    }
+  });
+});
+
 
 
 app.get("/api/memoireEtudiant", (req, res) => {
@@ -198,7 +225,7 @@ app.get("/api/memoireEtudiant", (req, res) => {
   }
 
   const query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, e.name AS etudiant_nom
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.description, m.file_name, m.file_path, e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
     WHERE m.id_etudiant = ?
@@ -224,29 +251,34 @@ app.get("/api/memoireEtudiant", (req, res) => {
 
 // Récupérer tous les mémoires avec les informations de l'étudiant
 app.get("/api/memoire", (req, res) => {
-  const query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, e.name AS etudiant_nom
+  const { status } = req.query; // Filtre sur le statut (validé, rejeté, etc.)
+
+  let query = `
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
   `;
-
-  console.log("Exécution de la requête :", query); // Log de la requête
-
   
-  db.query(query, (err, results) => {
+  const queryParams = [];
+  
+  // Si un status est fourni, ajoutez un filtre dans la requête
+  if (status) {
+    query += ` WHERE m.status = ?`; 
+    queryParams.push(status);
+  }
+
+  console.log("Exécution de la requête :", query, queryParams);
+
+  db.query(query, queryParams, (err, results) => {
     if (err) {
-      console.error("Erreur lors de la récupération des mémoires :", err); // Ajoutez cette ligne
+      console.error("Erreur lors de la récupération des mémoires :", err);
       return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
     }
 
-    if (Array.isArray(results)) {
-      res.status(200).json({ memoire: results });
-    } else {
-      console.error("Erreur : la réponse n'est pas un tableau", results);
-      res.status(500).json({ message: "Erreur interne serveur, réponse incorrecte." });
-    }
+    res.status(200).json({ memoire: results });
   });
 });
+
 
 //updateMemoire
 
@@ -290,11 +322,12 @@ app.patch("/api/memoire/:id", (req, res) => {
 
 //recuperer les memoires valider pour le home 
 app.get("/api/memoire", (req, res) => {
-  const { status } = req.query; // Récupérer le paramètre de filtre 'status'
+  // Récupérer le paramètre de filtre 'status' de la requête
+  const { status } = req.query; // Par exemple, status = 'validated'
 
-  // Construire la requête avec un filtre conditionnel
+  // Construire la requête avec un filtre conditionnel pour 'status'
   let query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, e.name AS etudiant_nom
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
   `;
@@ -317,6 +350,7 @@ app.get("/api/memoire", (req, res) => {
     res.status(200).json({ memoire: results });
   });
 });
+
 
 
 

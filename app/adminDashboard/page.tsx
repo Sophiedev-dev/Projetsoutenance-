@@ -99,6 +99,7 @@ const AdminDashboard = () => {
               <tr className="bg-gray-50">
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Libellé</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Université</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">description</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Cycle</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Spécialité</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Fichier</th>
@@ -117,18 +118,27 @@ const AdminDashboard = () => {
                 >
                   <td className="px-6 py-4 text-sm text-gray-700">{memoire.libelle}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{memoire.university}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.description}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{memoire.cycle}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{memoire.speciality}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <a
-                      href={`/${memoire.file_path}`}
-                      download
-                      className="text-blue-600 hover:text-purple-600 transition-colors flex items-center gap-2"
-                    >
-                      <FileText size={16} />
-                      {memoire.file_name}
-                    </a>
-                  </td>
+
+                  <td className="px-6 py-4">
+                     <a
+          href={`http://localhost:5000/${memoire.file_path}`}
+          download
+          className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
+        >
+          Télécharger
+        </a>
+      </td>
+      <td className="px-6 py-4">
+        <button
+          onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+        >
+          Visualiser
+        </button>
+      </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {memoire.etudiant_nom || 'Non disponible'}
                   </td>

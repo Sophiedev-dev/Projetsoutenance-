@@ -16,6 +16,7 @@ const Dashboard = () => {
     cycle: 'Bachelor',
     specialite: '',
     universite: '',
+    description:'',
     file: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +83,7 @@ const Dashboard = () => {
     formData.append('cycle', newMemoire.cycle);
     formData.append('speciality', newMemoire.specialite);
     formData.append('university', newMemoire.universite);
+    formData.append('description', newMemoire.description);
     formData.append('file', newMemoire.file);
     formData.append('id_etudiant', user.user.id_etudiant);
 
@@ -131,7 +133,7 @@ const Dashboard = () => {
           <div className="backdrop-blur-lg bg-white/80 p-8 rounded-2xl shadow-xl mb-8 border border-gray-100">
             <h3 className="text-2xl font-bold text-gray-800 mb-6">Add New Book</h3>
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
-              {['libelle', 'annee', 'specialite', 'universite'].map((field) => (
+              {['libelle', 'annee', 'specialite', 'universite', 'description'].map((field) => (
                 <div key={field}>
                   <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
                     {field}
@@ -203,7 +205,7 @@ const Dashboard = () => {
             <table className="w-full">
               <thead className="bg-gray-50/50">
                 <tr>
-                  {['Title', 'Year', 'Cycle', 'Speciality', 'University', 'File'].map((header) => (
+                  {['Title', 'Year', 'Cycle', 'Speciality', 'University','description','File'].map((header) => (
                     <th
                       key={header}
                       className="px-6 py-4 text-left text-sm font-semibold text-gray-600"
@@ -221,15 +223,24 @@ const Dashboard = () => {
                     <td className="px-6 py-4">{memoire.cycle}</td>
                     <td className="px-6 py-4">{memoire.speciality}</td>
                     <td className="px-6 py-4">{memoire.university}</td>
+                    <td className="px-6 py-4">{memoire.description}</td>
                     <td className="px-6 py-4">
-                      <a
-                        href={`/${memoire.file_path}`}
-                        download
-                        className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
-                      >
-                        {memoire.file_name}
-                      </a>
-                    </td>
+                     <a
+          href={`http://localhost:5000/${memoire.file_path}`}
+          download
+          className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
+        >
+          Télécharger
+        </a>
+      </td>
+      <td className="px-6 py-4">
+        <button
+          onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+        >
+          Visualiser
+        </button>
+      </td>
                   </tr>
                 ))}
               </tbody>
