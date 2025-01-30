@@ -284,41 +284,62 @@ app.get("/api/memoire", (req, res) => {
 
 
 //Recuperer les memoires valider ou rejeter 
+// Ajoute un champ "raison_rejet" pour stocker la raison du rejet dans la base de données
 app.patch("/api/memoire/:id", (req, res) => {
-  const idMemoire = req.params.id;
-  const { action } = req.body;
-
-  if (!idMemoire) {
-    return res.status(400).json({ message: "ID du mémoire requis." });
-  }
+  const { action, raison_rejet } = req.body;
+  const { id } = req.params;
 
   if (!['validated', 'rejected'].includes(action)) {
-    return res.status(400).json({ message: "Action invalide. Utilisez 'validated' ou 'rejected'." });
+    return res.status(400).json({ message: "Action non valide." });
   }
 
-  const query = `
-    UPDATE memoire
-    SET status = ?
-    WHERE id_memoire = ?
-  `;
+  let query = 'UPDATE memoire SET status = ?';
+  const queryParams = [action];
 
-  const values = [action, idMemoire];
+  if (action === 'rejected' && raison_rejet) {
+    query += ', raison_rejet = ?';
+    queryParams.push(raison_rejet);
+  }
 
-  console.log("Exécution de la requête :", query, values);
+  query += ' WHERE id_memoire = ?';
+  queryParams.push(id);
 
-  db.query(query, values, (err, result) => {
+  db.query(query, queryParams, (err, results) => {
     if (err) {
-      console.error("Erreur lors de la mise à jour du statut du mémoire :", err);
+      console.error("Erreur lors de la mise à jour du mémoire :", err);
       return res.status(500).json({ message: "Erreur lors de la mise à jour du mémoire." });
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Mémoire non trouvé." });
+    if (action === 'rejected' && raison_rejet) {
+      // Envoyer un email ou une notification à l'étudiant avec la raison du rejet
+      // Pour l'exemple, on imagine une fonction sendEmailToStudent
+      const emailQuery = `
+        SELECT e.email
+        FROM etudiant e
+        JOIN memoire m ON e.id_etudiant = m.id_etudiant
+        WHERE m.id_memoire = ?
+      `;
+      
+      db.query(emailQuery, [id], (err, results) => {
+        if (err || results.length === 0) {
+          console.error("Erreur lors de la récupération de l'email de l'étudiant :", err);
+          return res.status(500).json({ message: "Erreur lors de l'envoi de l'email à l'étudiant." });
+        }
+
+        const studentEmail = results[0].email;
+        sendEmailToStudent(studentEmail, raison_rejet); // fonction fictive d'envoi d'email
+      });
     }
 
-    res.status(200).json({ message: `Mémoire ${action} avec succès.` });
+    res.status(200).json({ message: `Le mémoire a été ${action} avec succès.` });
   });
 });
+
+function sendEmailToStudent(email, reason) {
+  // Code fictif pour envoyer un email
+  console.log(`Email envoyé à ${email}: Votre mémoire a été rejeté. Raison: ${reason}`);
+}
+
 
 //recuperer les memoires valider pour le home 
 app.get("/api/memoire", (req, res) => {
@@ -350,8 +371,6 @@ app.get("/api/memoire", (req, res) => {
     res.status(200).json({ memoire: results });
   });
 });
-
-
 
 
 // // Récupérer tous les mémoires

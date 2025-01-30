@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [memoires, setMemoires] = useState([]);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedMemoire, setSelectedMemoire] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     validated: 0,
@@ -15,6 +17,72 @@ const AdminDashboard = () => {
     pending: 0,
   });
   const [filter, setFilter] = useState('all');
+
+  const handleRejection = async (memoireId) => {
+    if (!rejectionReason) {
+      toast.error('Veuillez entrer une raison pour le rejet.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'rejected',
+          raison_rejet: rejectionReason,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'action sur le mémoire.');
+      }
+
+      toast.success('Le mémoire a été rejeté et la raison a été envoyée à l\'étudiant.');
+      setRejectionReason('');
+      setSelectedMemoire(null);
+      // Rafraîchir la liste des mémoires
+      fetchMemoires();
+    } catch (error) {
+      console.error("Erreur lors du rejet du mémoire :", error);
+      toast.error('Erreur lors du rejet du mémoire.');
+    }
+  };
+
+
+  const renderRejectionModal = () => {
+    if (!selectedMemoire) return null;
+
+    return (
+      <div className="modal">
+        <div className="modal-content">
+          <h2>Raison du rejet</h2>
+          <textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Entrez la raison du rejet ici..."
+            rows="4"
+            className="textarea"
+          />
+          <button
+            onClick={() => handleRejection(selectedMemoire.id_memoire)}
+            className="btn btn-danger"
+          >
+            Rejeter
+          </button>
+          <button
+            onClick={() => setSelectedMemoire(null)}
+            className="btn btn-secondary"
+          >
+            Annuler
+          </button>
+        </div>
+      </div>
+    );
+  };
+
 
   const fetchMemoires = async () => {
     try {
@@ -162,6 +230,7 @@ const AdminDashboard = () => {
               ))}
             </tbody>
           </table>
+          {renderRejectionModal()}
         </div>
       </motion.div>
     );
