@@ -4,21 +4,21 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
 import Image from 'next/image';
-import { Worker, Viewer  } from "@react-pdf-viewer/core";
-import {  defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
-import { pdfjs } from 'react-pdf';
-
-// Styles pour react-pdf-viewer
-
+import { Worker, Viewer } from "@react-pdf-viewer/core";
+import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
+// Ne pas importer pdfjs au début pour éviter l'erreur `window is not defined`
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
-
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`;
 
 const Homepage = () => {
   const [memoires, setMemoires] = useState([]);
   const [selectedMemoire, setSelectedMemoire] = useState(null);
+  const [isClient, setIsClient] = useState(false); // Etat pour gérer l'exécution côté client
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
+
+  useEffect(() => {
+    setIsClient(true); // Quand le composant est monté côté client
+  }, []);
 
   const fetchMemoires = async (status = 'validated') => {
     try {
@@ -127,67 +127,63 @@ const Homepage = () => {
         </div>
 
         <div className="relative">
-        <div className="flex space-x-8 overflow-x-auto pb-8 scrollbar-hide">
+          <div className="flex space-x-8 overflow-x-auto pb-8 scrollbar-hide">
             {/* Liste des mémoires */}
             <div className="flex space-x-8 overflow-x-auto">
-                {memoires.map((memoire) => (
-                    <div
-                        key={memoire.id_memoire}
-                        className="flex-none w-64 transform hover:scale-105 transition-all duration-300 cursor-pointer"
-                        onClick={() => setSelectedMemoire(memoire)}
-                    >
-                       <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <img
-                  src={`http://localhost:5000/${memoire.file_path}`}
-                  alt={memoire.libelle}
-                  className="w-full h-80 object-cover"
-                />
-                <div className="w-full h-80">
-                  {/* Affichage de la première page du PDF */}
-                  <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-                    <Viewer fileUrl={`http://localhost:5000/${memoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
-                  </Worker>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-bold text-xl mb-2">{memoire.libelle}</h3>
-                  <p className="text-gray-600">{memoire.etudiant_nom}</p>
-                  <span className="inline-block mt-4 px-4 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
-                    Validated
-                  </span>
-                </div>
-                       </div>
+              {memoires.map((memoire) => (
+                <div
+                  key={memoire.id_memoire}
+                  className="flex-none w-64 transform hover:scale-105 transition-all duration-300 cursor-pointer"
+                  onClick={() => setSelectedMemoire(memoire)}
+                >
+                  <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                    <img
+                      src={`http://localhost:5000/${memoire.file_path}`}
+                      alt={memoire.libelle}
+                      className="w-full h-80 object-cover"
+                    />
+                    <div className="w-full h-80">
+                      {/* Affichage de la première page du PDF */}
+                      {isClient && (
+                        <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
+                          <Viewer fileUrl={`http://localhost:5000/${memoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
+                        </Worker>
+                      )}
                     </div>
-                ))}
+                    <div className="p-6">
+                      <h3 className="font-bold text-xl mb-2">{memoire.libelle}</h3>
+                      <p className="text-gray-600">{memoire.etudiant_nom}</p>
+                      <span className="inline-block mt-4 px-4 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
+                        Validated
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Prévisualisation du PDF */}
             {selectedMemoire && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
-              <div className="flex justify-between items-center p-4 border-b">
-                <h2 className="font-bold text-lg">{selectedMemoire.libelle}</h2>
-                <button
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() => setSelectedMemoire(null)}
-                >
-                  ✕
-                </button>
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
+                  <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="font-bold text-lg">{selectedMemoire.libelle}</h2>
+                    <button
+                      className="text-gray-500 hover:text-gray-700"
+                      onClick={() => setSelectedMemoire(null)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="w-full h-full">
+                    <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
+                      <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
+                    </Worker>
+                  </div>
+                </div>
               </div>
-              <div className="h-full">
-                <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-                  <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
-                </Worker>
-              </div>
-            </div>
+            )}
           </div>
-        )}
-        </div>
-          <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
-            <ChevronLeft size={24} />
-          </button>
-          <button className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
-            <ChevronRight size={24} />
-          </button>
         </div>
       </div>
     </div>
