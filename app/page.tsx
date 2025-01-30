@@ -162,20 +162,25 @@ const Homepage = () => {
 
             {/* Prévisualisation du PDF */}
             {selectedMemoire && (
-  <div className="w-full h-screen bg-gray-50 p-4">
-    <h2 className="text-xl font-bold mb-4">
-      Prévisualisation : {selectedMemoire.libelle}
-    </h2>
-    <div className="h-[90vh] border rounded-lg overflow-hidden shadow-md">
-      <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-        <Viewer
-          fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`}
-          plugins={[defaultLayoutPluginInstance]}
-        />
-      </Worker>
-    </div>
-  </div>
-            )}
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h2 className="font-bold text-lg">{selectedMemoire.libelle}</h2>
+                <button
+                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setSelectedMemoire(null)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="h-full">
+                <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
+                  <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
+                </Worker>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
           <button className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-white transition-colors">
             <ChevronLeft size={24} />
