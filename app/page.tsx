@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 // Ne pas importer pdfjs au début pour éviter l'erreur `window is not defined`
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import "pdfjs-dist/build/pdf.worker.entry";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 
@@ -43,6 +45,32 @@ const Homepage = () => {
   useEffect(() => {
     fetchMemoires('validated');
   }, []);
+
+  const getPdfThumbnail = async (pdfUrl) => {
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1); // Récupère la première page
+  
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+  
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+  
+    await page.render({ canvasContext: context, viewport }).promise;
+  
+    return canvas.toDataURL("image/png"); // Convertit en image
+  };
+
+  const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
+
+useEffect(() => {
+  memoires.forEach(async (memoire) => {
+    const thumbnail = await getPdfThumbnail(`http://localhost:5000/${memoire.file_path}`);
+    setThumbnails((prev) => ({ ...prev, [memoire.id_memoire]: thumbnail }));
+  });
+}, [memoires]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -129,31 +157,60 @@ const Homepage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {/* Liste des mémoires */}
           {memoires.map((memoire) => (
-            <div
-              key={memoire.id_memoire}
-              className="bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-105 hover:shadow-2xl cursor-pointer"
-              onClick={() => setSelectedMemoire(memoire)}
+           <div
+               key={memoire.id_memoire}
+               className="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
+               onClick={() => setSelectedMemoire(memoire)}
             >
-              <div className="relative w-full h-80">
-                {/* Affichage de la première page du PDF */}
-                {isClient && (
-                  <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-                    <Viewer fileUrl={`http://localhost:5000/${memoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
-                  </Worker>
-                )}
+             {/* Conteneur de l'image avec effet de profondeur */}
+           <div className="relative w-full h-64 overflow-hidden">
+               {thumbnails[memoire.id_memoire] ? (
+                <div className="relative w-full h-full">
+                  <Image
+                     src={thumbnails[memoire.id_memoire]}
+                     alt="PDF Cover"
+                     width={300}
+                     height={400}
+                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+               </div>
+               ) : (
+               <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                 <div className="animate-pulse flex flex-col items-center">
+                  <div className="h-8 w-8 mb-2 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                  <span className="text-sm text-gray-400">Chargement...</span>
+               </div>
               </div>
-              <div className="p-6 space-y-4">
-                <h3 className="text-xl font-semibold text-gray-800">{memoire.libelle}</h3>
-                <p className="text-gray-500">{memoire.etudiant_nom}</p>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block mt-4 px-4 py-1 bg-green-100 text-green-600 rounded-full text-sm font-medium">
-                    Validated
-                  </span>
-                  <span className="text-gray-400 text-xs">{memoire.date_creation}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            )}
+       </div>
+
+    {/* Informations du mémoire */}
+    <div className="p-4 space-y-2">
+      <h3 className="text-lg font-semibold text-gray-800 line-clamp-2 group-hover:text-blue-600 transition-colors">
+        {memoire.libelle}
+      </h3>
+      
+      <div className="flex flex-wrap gap-2">
+        <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+          {memoire.cycle}
+        </span>
+        <span className="px-2 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
+          {memoire.speciality}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between mt-3">
+        <span className="text-sm font-medium text-gray-500">
+          {memoire.annee}
+        </span>
+        <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-3 py-1 bg-blue-600 text-white text-sm rounded-full hover:bg-blue-700">
+          Voir plus
+        </button>
+      </div>
+    </div>
+  </div>
+))}
         </div>
 
         {/* Prévisualisation du PDF */}
