@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, FileText, Settings, ChevronDown, Book } from 'lucide-react';
+import { BarChart, Users, FileText, Settings, ChevronDown, Book,Trash } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
 
@@ -19,38 +19,29 @@ const AdminDashboard = () => {
   const [filter, setFilter] = useState('all');
 
   const handleRejection = async (memoireId) => {
-    if (!rejectionReason) {
-      toast.error('Veuillez entrer une raison pour le rejet.');
-      return;
-    }
-
+    const rejectionReason = prompt("Veuillez entrer la raison du rejet :");
+    if (!rejectionReason) return;
+  
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'rejected',
-          raison_rejet: rejectionReason,
-        }),
+      const response = await fetch(`http://localhost:5000/api/memoire/reject/${memoireId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rejection_reason: rejectionReason }), // Envoi de la raison du rejet
       });
-
+  
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'action sur le mémoire.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors du rejet du mémoire.');
       }
-
-      toast.success('Le mémoire a été rejeté et la raison a été envoyée à l\'étudiant.');
-      setRejectionReason('');
-      setSelectedMemoire(null);
-      // Rafraîchir la liste des mémoires
+  
+      toast.success('Le mémoire a été rejeté avec succès.');
       fetchMemoires();
     } catch (error) {
       console.error("Erreur lors du rejet du mémoire :", error);
-      toast.error('Erreur lors du rejet du mémoire.');
+      toast.error(error.message || 'Erreur lors du rejet du mémoire.');
     }
   };
-
+  
 
   const renderRejectionModal = () => {
     if (!selectedMemoire) return null;
@@ -82,6 +73,30 @@ const AdminDashboard = () => {
       </div>
     );
   };
+
+
+  const handleDeleteMemoire = async (memoireId) => {
+    try {
+        // Confirmer la suppression
+        const confirmation = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
+        if (!confirmation) return;
+
+        const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            throw new Error('Erreur lors de la suppression du mémoire.');
+        }
+
+        toast.success('Le mémoire a été supprimé avec succès.');
+        fetchMemoires(); // Rafraîchir la liste des mémoires
+    } catch (error) {
+        console.error('Erreur lors de la suppression du mémoire:', error);
+        toast.error('Erreur lors de la suppression du mémoire.');
+    }
+};
+
 
 
   const fetchMemoires = async () => {
@@ -145,34 +160,33 @@ const AdminDashboard = () => {
         className="bg-white rounded-2xl shadow-lg p-6 backdrop-blur-lg bg-white/90"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+          <h2 className="text-2xl font-bold text-gray-800">
             Mémoires soumis
           </h2>
-          <div className="flex gap-4">
-            <select
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="pending">En attente</option>
-              <option value="validated">Validés</option>
-              <option value="rejected">Rejetés</option>
-            </select>
-          </div>
+          <select
+            onChange={(e) => setFilter(e.target.value)}
+            className="px-4 py-2 rounded-lg bg-white border-2 border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none text-gray-700 font-medium shadow-sm"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="pending">En attente</option>
+            <option value="validated">Validés</option>
+            <option value="rejected">Rejetés</option>
+          </select>
         </div>
 
-        <div className="overflow-x-auto rounded-xl">
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50">
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Libellé</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Université</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">description</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Cycle</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Spécialité</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Fichier</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Étudiant</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Actions</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Etudiant</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Libellé</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Université</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Description</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Visualiser</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Actions</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Surpprimer</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -182,49 +196,55 @@ const AdminDashboard = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.1 }}
-                  className="hover:bg-gray-50/50 transition-colors duration-200"
+                  className="hover:bg-gray-50/80 transition-colors duration-200"
                 >
-                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.libelle}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.university}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.description}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.cycle}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{memoire.speciality}</td>
-
-                  <td className="px-6 py-4">
-                     <a
-          href={`http://localhost:5000/${memoire.file_path}`}
-          download
-          className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
-        >
-          Télécharger
-        </a>
-      </td>
-      <td className="px-6 py-4">
-        <button
-          onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
-        >
-          Visualiser
-        </button>
-      </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {memoire.etudiant_nom || 'Non disponible'}
+                     {memoire.etudiant_nom || 'Non disponible'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-800 font-medium">{memoire.libelle}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{memoire.university}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{memoire.description}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
+                      {memoire.cycle}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600">
+                      {memoire.speciality}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                      <button
+                        onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+                        className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                      >
+                        Visualiser
+                      </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleMemoireAction(memoire.id_memoire, 'validated')}
-                        className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-green-400 to-green-500 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
                       >
                         Valider
                       </button>
                       <button
-                        onClick={() => handleMemoireAction(memoire.id_memoire, 'rejected')}
-                        className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-red-400 to-red-500 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+                        onClick={() => setSelectedMemoire(memoire)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
                       >
                         Rejeter
                       </button>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                      <button
+                         onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+                         className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+                         >
+                         <Trash size={16} />
+                      </button>
                   </td>
                 </motion.tr>
               ))}
@@ -235,6 +255,7 @@ const AdminDashboard = () => {
       </motion.div>
     );
   };
+
 
   const renderContent = () => {
     switch (activeTab) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,7 +10,9 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [memoires, setMemoires] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const notifiedMemoires = useRef(new Set());
   const [newMemoire, setNewMemoire] = useState({
+    
     libelle: '',
     annee: '',
     cycle: 'Bachelor',
@@ -25,17 +27,17 @@ const Dashboard = () => {
   const fetchMemoires = async () => {
     try {
       const storedUser = localStorage.getItem('user');
-      const user = storedUser ? JSON.parse(storedUser) : null;
-
-
-      if (!user.user || !user.user.id_etudiant) {
+      const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+      const userId = parsedUser?.user?.id_etudiant;
+      
+      if (!userId) {
         console.error("Aucun utilisateur trouvé ou ID étudiant manquant.");
         return;
       }
   
-      const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${user.user.id_etudiant}`);
-      if (!response.ok) {
-        throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
+      const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${userId}`);
+        if (!response.ok) {
+        throw new Error(`Erreur serveur (${response.status}) : ${await response.text()}`);
       }
   
       const data = await response.json();
@@ -57,11 +59,58 @@ const Dashboard = () => {
       }
     }
   };
+
+    const handleDeleteMemoire = async (memoireId) => {
+      try {
+          // Confirmer la suppression
+          const confirmation = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
+          if (!confirmation) return;
+  
+          const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+              method: 'DELETE',
+          });
+  
+          if (!response.ok) {
+              throw new Error('Erreur lors de la suppression du mémoire.');
+          }
+  
+          toast.success('Le mémoire a été supprimé avec succès.');
+          fetchMemoires(); // Rafraîchir la liste des mémoires
+      } catch (error) {
+          console.error('Erreur lors de la suppression du mémoire:', error);
+          toast.error('Erreur lors de la suppression du mémoire.');
+      }
+  };
   
   useEffect(() => {
     fetchMemoires();
-  }, []);
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []); 
   
+  useEffect(() => {
+    console.log("Liste des mémoires chargées :", memoires);
+  
+    memoires.forEach((memoire) => {
+      if (memoire.status === "rejected" && !notifiedMemoires.current.has(memoire.libelle)) {
+        console.log("Mémoire rejeté détecté :", memoire);
+  
+        // Ajouter le mémoire dans la liste des notifications déjà envoyées
+        notifiedMemoires.current.add(memoire.libelle);
+  
+        // Afficher la notification
+        toast.error(`Votre mémoire "${memoire.libelle}" a été rejeté. Motif : ${memoire.rejection_reason}`, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      }
+    });
+  }, [memoires]); 
+  
+  
+
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -117,7 +166,7 @@ const Dashboard = () => {
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Dashboard</h2>
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Welcome {user?.user?.surname || 'Étudiant'} !</h2>
             <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
           <button
@@ -216,33 +265,46 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {memoires.map((memoire, index) => (
-                  <tr key={index} className="hover:bg-gray-50/50 transition-colors duration-150">
-                    <td className="px-6 py-4">{memoire.libelle}</td>
-                    <td className="px-6 py-4">{new Date(memoire.annee).toLocaleDateString()}</td>
-                    <td className="px-6 py-4">{memoire.cycle}</td>
-                    <td className="px-6 py-4">{memoire.speciality}</td>
-                    <td className="px-6 py-4">{memoire.university}</td>
-                    <td className="px-6 py-4">{memoire.description}</td>
-                    <td className="px-6 py-4">
-                     <a
-          href={`http://localhost:5000/${memoire.file_path}`}
-          download
-          className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
-        >
-          Télécharger
-        </a>
-      </td>
-      <td className="px-6 py-4">
-        <button
-          onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
-        >
-          Visualiser
-        </button>
-      </td>
-                  </tr>
-                ))}
+              {memoires.map((memoire, index) => (
+  <tr key={index} className="hover:bg-gray-50/50 transition-colors duration-150">
+    <td className="px-6 py-4">{memoire.libelle}</td>
+    <td className="px-6 py-4">{new Date(memoire.annee).toLocaleDateString()}</td>
+    <td className="px-6 py-4">{memoire.cycle}</td>
+    <td className="px-6 py-4">{memoire.speciality}</td>
+    <td className="px-6 py-4">{memoire.university}</td>
+    <td className="px-6 py-4">{memoire.description}</td>
+    <td className="px-6 py-4">
+      <a
+        href={`http://localhost:5000/${memoire.file_path}`}
+        download
+        className="text-blue-600 hover:text-purple-600 transition-colors duration-200"
+      >
+        Télécharger
+      </a>
+    </td>
+    <td className="px-6 py-4">
+      <button
+        onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+      >
+        Visualiser
+      </button>
+      <button
+        onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+        className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
+      >
+        Supprimer
+      </button>
+    </td>
+    <td className="px-6 py-4">
+      {memoire.status === "rejected" && (
+         <span className="text-red-500 font-bold flex items-center">
+            ❌ Rejeté - {memoire.rejection_reason}
+         </span>
+      )}
+    </td>
+  </tr>
+))}
               </tbody>
             </table>
           </div>

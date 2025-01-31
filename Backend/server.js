@@ -4,6 +4,8 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const bcrypt = require("bcrypt");
+
 
 const dbConfig = {
   user: "root",
@@ -109,56 +111,52 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
   });
 });
 
-app.post("/api/etudiant",(req,res)=> {
-  const query =`
-   INSERT INTO etudiant(name,surname,email,password) 
-   VALUES(?,?,?,?)
-`
-const { name, surname, email, password} =
-req.body;
-  // Vérification des champs requis
-if (!name || !surname || !email || !password) {
-  return res.status(400).json({ message: "Tous les champs sont obligatoires." });
-}
+app.post("/api/etudiant", async (req, res) => {
+  const { name, surname, email, password } = req.body;
 
-db.query(query, [name,surname,email,password], (err,result)=>{
-  if (err) {
-    console.error("Erreur lors de l'insertion dans la base de données:", err);
+  if (!name || !surname || !email || !password) {
+    return res.status(400).json({ message: "Tous les champs sont obligatoires." });
+  }
 
-  return res
-        .status(500)
-        .json({ message: "Erreur interne du serveur.", error: err });
-}else{
-  return res
-        .status(201)
-        .json({ message: "insertion reussie", });
-}
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10); // Hachage avec un salt de 10
 
-});
-
+    const query = `INSERT INTO etudiant(name, surname, email, password) VALUES(?, ?, ?, ?)`;
+    db.query(query, [name, surname, email, hashedPassword], (err, result) => {
+      if (err) {
+        console.error("Erreur lors de l'insertion :", err);
+        return res.status(500).json({ message: "Erreur interne du serveur." });
+      }
+      res.status(201).json({ message: "Inscription réussie !" });
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors du hachage du mot de passe." });
+  }
 });
 
 
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
-  // Validation des entrées
   if (!email || !password) {
     return res.status(400).json({ message: "Email et mot de passe requis." });
   }
 
-  console.log("Tentative de connexion - Email:", email);
-
-  // Fonction pour exécuter une requête SQL et traiter le résultat
   const executeQuery = (query, params, role) => {
     return new Promise((resolve, reject) => {
-      db.query(query, params, (err, results) => {
-        if (err) {
-          reject(err);
-        } else if (results.length > 0) {
+      db.query(query, params, async (err, results) => {
+        if (err) return reject(err);
+
+        if (results.length > 0) {
           const user = results[0];
-          delete user.password; // Retirer le mot de passe avant de retourner les données
-          resolve({ role, user });
+          const isValid = await bcrypt.compare(password, user.password); // Comparer les mots de passe
+
+          if (isValid) {
+            delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
+            resolve({ role, user });
+          } else {
+            resolve(null);
+          }
         } else {
           resolve(null);
         }
@@ -166,13 +164,12 @@ app.post("/api/login", (req, res) => {
     });
   };
 
-  // Vérifier les deux rôles : admin et étudiant
-  const adminQuery = "SELECT * FROM admin WHERE email = ? AND password = ?";
-  const studentQuery = "SELECT * FROM etudiant WHERE email = ? AND password = ?";
+  const adminQuery = "SELECT * FROM admin WHERE email = ?";
+  const studentQuery = "SELECT * FROM etudiant WHERE email = ?";
 
   Promise.all([
-    executeQuery(adminQuery, [email, password], "admin"),
-    executeQuery(studentQuery, [email, password], "etudiant"),
+    executeQuery(adminQuery, [email], "admin"),
+    executeQuery(studentQuery, [email], "etudiant"),
   ])
     .then(([adminResult, studentResult]) => {
       if (adminResult) {
@@ -189,8 +186,6 @@ app.post("/api/login", (req, res) => {
           user: studentResult.user,
         });
       }
-
-      // Aucun utilisateur trouvé
       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
     })
     .catch((err) => {
@@ -198,6 +193,8 @@ app.post("/api/login", (req, res) => {
       return res.status(500).json({ message: "Erreur interne du serveur." });
     });
 });
+
+
 
 app.get("/uploads/:filename", (req, res) => {
   const fileName = req.params.filename;
@@ -278,6 +275,52 @@ app.get("/api/memoire", (req, res) => {
     res.status(200).json({ memoire: results });
   });
 });
+
+
+app.delete("/api/memoire/:id", (req, res) => {
+  const { id } = req.params; // ID du mémoire à supprimer
+
+  // Étape 1 : Récupérer le chemin du fichier à supprimer
+  const query = "SELECT file_path FROM memoire WHERE id_memoire = ?";
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error("Erreur lors de la récupération du chemin du fichier :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Mémoire non trouvé." });
+    }
+
+    const filePath = result[0].file_path;
+
+    // Étape 2 : Supprimer le fichier physique du serveur
+    fs.unlink(filePath, (unlinkErr) => {
+      if (unlinkErr) {
+        console.error("Erreur lors de la suppression du fichier :", unlinkErr);
+        return res.status(500).json({ message: "Erreur lors de la suppression du fichier." });
+      }
+
+      console.log("Fichier supprimé avec succès.");
+    });
+
+    // Étape 3 : Supprimer l'enregistrement du mémoire dans la base de données
+    const deleteQuery = "DELETE FROM memoire WHERE id_memoire = ?";
+    db.query(deleteQuery, [id], (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la suppression du mémoire :", err);
+        return res.status(500).json({ message: "Erreur lors de la suppression du mémoire." });
+      }
+
+      if (result.affectedRows > 0) {
+        return res.status(200).json({ message: "Plan de travail supprimé avec succès." });
+      } else {
+        return res.status(404).json({ message: "Mémoire non trouvé." });
+      }
+    });
+  });
+});
+
 
 
 //updateMemoire
@@ -371,6 +414,56 @@ app.get("/api/memoire", (req, res) => {
     res.status(200).json({ memoire: results });
   });
 });
+
+
+app.put("/api/memoire/reject/:id", (req, res) => {
+  const { id } = req.params;
+  const { rejection_reason } = req.body;
+
+  if (!id || !rejection_reason) {
+    return res.status(400).json({ message: "ID et raison du rejet sont requis." });
+  }
+
+  const query = `UPDATE memoire SET status = 'rejected', rejection_reason = ? WHERE id_memoire = ?`;
+
+  db.query(query, [rejection_reason, id], (err, result) => {
+    if (err) {
+      console.error("Erreur SQL lors du rejet du mémoire :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Mémoire non trouvé." });
+    }
+
+    const getStudentQuery = `SELECT id_etudiant FROM memoire WHERE id_memoire = ?`;
+    db.query(getStudentQuery, [id], (err, studentResult) => {
+      if (err) {
+        console.error("Erreur SQL lors de la récupération de l'étudiant :", err);
+        return res.status(500).json({ message: "Erreur interne du serveur." });
+      }
+
+      if (studentResult.length === 0) {
+        return res.status(200).json({ message: "Mémoire rejeté mais étudiant non trouvé." });
+      }
+
+      const id_etudiant = studentResult[0].id_etudiant;
+      const message = `Votre mémoire a été rejeté pour la raison suivante : ${rejection_reason}`;
+
+      const notificationQuery = `INSERT INTO notifications (id_etudiant, message) VALUES (?, ?)`;
+      db.query(notificationQuery, [id_etudiant, message], (err, notifResult) => {
+        if (err) {
+          console.error("Erreur SQL lors de l'insertion de la notification :", err);
+          return res.status(500).json({ message: "Erreur interne du serveur." });
+        }
+
+        res.status(200).json({ message: "Mémoire rejeté et notification envoyée." });
+      });
+    });
+  });
+});
+
+
 
 
 // // Récupérer tous les mémoires
