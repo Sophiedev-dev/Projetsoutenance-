@@ -121,7 +121,7 @@ useEffect(() => {
 
       {/* Section héro avec overlay amélioré */}
       <div>
-        <div className="relative bg-[url('../images/imag.jpg')] bg-cover bg-center h-screen">
+        <div className="relative bg-[url('../images/image.jpg')] bg-cover bg-center h-screen">
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
           <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center">
             <div className="w-1/2 relative z-10">

@@ -424,9 +424,9 @@ app.put("/api/memoire/reject/:id", (req, res) => {
     return res.status(400).json({ message: "ID et raison du rejet sont requis." });
   }
 
-  const query = `UPDATE memoire SET status = 'rejected', rejection_reason = ? WHERE id_memoire = ?`;
-
-  db.query(query, [rejection_reason, id], (err, result) => {
+  const updateQuery = `UPDATE memoire SET status = 'rejected', rejection_reason = ? WHERE id_memoire = ?`;
+  
+  db.query(updateQuery, [rejection_reason, id], (err, result) => {
     if (err) {
       console.error("Erreur SQL lors du rejet du mémoire :", err);
       return res.status(500).json({ message: "Erreur interne du serveur." });
@@ -436,6 +436,7 @@ app.put("/api/memoire/reject/:id", (req, res) => {
       return res.status(404).json({ message: "Mémoire non trouvé." });
     }
 
+    // Récupérer l'ID de l'étudiant concerné
     const getStudentQuery = `SELECT id_etudiant FROM memoire WHERE id_memoire = ?`;
     db.query(getStudentQuery, [id], (err, studentResult) => {
       if (err) {
@@ -450,6 +451,7 @@ app.put("/api/memoire/reject/:id", (req, res) => {
       const id_etudiant = studentResult[0].id_etudiant;
       const message = `Votre mémoire a été rejeté pour la raison suivante : ${rejection_reason}`;
 
+      // Insérer la notification
       const notificationQuery = `INSERT INTO notifications (id_etudiant, message) VALUES (?, ?)`;
       db.query(notificationQuery, [id_etudiant, message], (err, notifResult) => {
         if (err) {
@@ -463,7 +465,25 @@ app.put("/api/memoire/reject/:id", (req, res) => {
   });
 });
 
+// Route pour récupérer les notifications d'un étudiant
+app.get("/api/notifications/:id_etudiant", (req, res) => {
+  const { id_etudiant } = req.params;
 
+  if (!id_etudiant) {
+    return res.status(400).json({ message: "L'ID de l'étudiant est requis." });
+  }
+
+  const getNotificationsQuery = `SELECT * FROM notifications WHERE id_etudiant = ? ORDER BY date_creation DESC`;
+
+  db.query(getNotificationsQuery, [id_etudiant], (err, results) => {
+    if (err) {
+      console.error("Erreur SQL lors de la récupération des notifications :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    }
+
+    res.status(200).json({ notifications: results });
+  });
+});
 
 
 // // Récupérer tous les mémoires

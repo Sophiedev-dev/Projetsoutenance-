@@ -1,16 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Bell, Plus, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import MySideBar from './ui/sideBar';
+import { Card, CardContent, Button } from "@mui/material";
 
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [memoires, setMemoires] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const notifiedMemoires = useRef(new Set());
+  const [notifications, setNotifications] = useState([
+    {
+      id_notification: 1,
+      id_etudiant: 101,
+      message: 'New assignment available.',
+      date_creation: '2025-02-03T12:00:00Z',
+    },
+  ]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [newMemoire, setNewMemoire] = useState({
     
     libelle: '',
@@ -21,7 +31,14 @@ const Dashboard = () => {
     description:'',
     file: null,
   });
+  // const [showNotifications, setShowNotifications] = useState(false);
+  // const notifications = [
+  //   "Nouvelle mise à jour disponible!",
+  //   "Un nouvel utilisateur a rejoint votre groupe.",
+  //   "Votre demande a été approuvée."
+  // ];
   const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   // Fonction pour récupérer les mémoires depuis l'API
   const fetchMemoires = async () => {
@@ -60,6 +77,16 @@ const Dashboard = () => {
     }
   };
 
+   // Récupérer l'utilisateur depuis le localStorage
+   useEffect(() => {
+      fetchMemoires();
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    }, []); 
+
+
     const handleDeleteMemoire = async (memoireId) => {
       try {
           // Confirmer la suppression
@@ -81,37 +108,44 @@ const Dashboard = () => {
           toast.error('Erreur lors de la suppression du mémoire.');
       }
   };
-  
-  useEffect(() => {
-    fetchMemoires();
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+
+  const fetchNotifications = async () => {
+    try {
+      if (!user) return;
+      const userId = user?.user?.id_etudiant;
+      if (!userId) return;
+
+      const response = await fetch(`http://localhost:5000/api/notifications/${userId}`);
+      if (!response.ok) {
+        throw new Error(`Erreur serveur (${response.status}) : ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des notifications :", error);
     }
-  }, []); 
-  
+  };
+
   useEffect(() => {
-    console.log("Liste des mémoires chargées :", memoires);
-  
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  // Afficher les notifications des mémoires rejetés
+  useEffect(() => {
     memoires.forEach((memoire) => {
       if (memoire.status === "rejected" && !notifiedMemoires.current.has(memoire.libelle)) {
-        console.log("Mémoire rejeté détecté :", memoire);
-  
-        // Ajouter le mémoire dans la liste des notifications déjà envoyées
         notifiedMemoires.current.add(memoire.libelle);
-  
-        // Afficher la notification
         toast.error(`Votre mémoire "${memoire.libelle}" a été rejeté. Motif : ${memoire.rejection_reason}`, {
           position: "top-right",
           autoClose: 5000,
         });
       }
     });
-  }, [memoires]); 
+  }, [memoires]);
   
-  
-
-
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     setNewMemoire((prev) => ({
@@ -176,6 +210,41 @@ const Dashboard = () => {
             <Plus className="mr-2" size={20} />
             Add New Book
           </button>
+        </div>
+        <div className="fixed top-4 right-4 z-50">
+      <button
+        className="relative p-2 rounded-full bg-gray-200 hover:bg-gray-300"
+        onClick={() => setShowNotifications(!showNotifications)}
+      >
+        <Bell className="w-6 h-6" />
+        {notifications.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+            {notifications.length}
+          </span>
+        )}
+      </button>
+
+      {showNotifications && (
+        <Card className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg">
+          <CardContent className="p-4">
+            <h4 className="font-semibold mb-2">Notifications</h4>
+            {notifications.length > 0 ? (
+              <ul className="space-y-2">
+                {notifications.map((notification) => (
+                  <li key={notification.id_notification} className="text-sm text-gray-700">
+                    <p>{notification.message}</p>
+                    <span className="text-xs text-gray-500">
+                      {new Date(notification.date_creation).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">Aucune notification</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
         </div>
 
         {showForm && (

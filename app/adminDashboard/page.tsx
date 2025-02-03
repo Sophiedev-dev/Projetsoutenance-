@@ -18,7 +18,7 @@ const AdminDashboard = () => {
   });
   const [filter, setFilter] = useState('all');
 
-  const handleRejection = async (memoireId) => {
+  const handleRejection = async (memoireId, p0: string) => {
     const rejectionReason = prompt("Veuillez entrer la raison du rejet :");
     if (!rejectionReason) return;
   
@@ -57,12 +57,12 @@ const AdminDashboard = () => {
             rows="4"
             className="textarea"
           />
-          <button
+          {/* <button
             onClick={() => handleRejection(selectedMemoire.id_memoire)}
             className="btn btn-danger"
           >
             Rejeter
-          </button>
+          </button> */}
           <button
             onClick={() => setSelectedMemoire(null)}
             className="btn btn-secondary"
@@ -231,7 +231,7 @@ const AdminDashboard = () => {
                         Valider
                       </button>
                       <button
-                        onClick={() => setSelectedMemoire(memoire)}
+                        onClick={() => handleRejection(memoire.id_memoire, 'rejected')}
                         className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
                       >
                         Rejeter
