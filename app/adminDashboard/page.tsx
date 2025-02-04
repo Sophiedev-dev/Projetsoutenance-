@@ -151,6 +151,11 @@ const AdminDashboard = () => {
     }
   };
 
+  const filteredMemoires = filter === 'all' 
+  ? memoires 
+  : memoires.filter(memoire => memoire.status === filter);
+
+
   const renderMemoires = () => {
     return (
       <motion.div
@@ -190,7 +195,7 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {memoires.map((memoire, index) => (
+              {filteredMemoires.map((memoire, index) => (
                 <motion.tr
                   key={memoire.id || `${memoire.libelle}-${index}`}
                   initial={{ opacity: 0 }}

@@ -16,35 +16,68 @@ const Homepage = () => {
   const [memoires, setMemoires] = useState([]);
   const [selectedMemoire, setSelectedMemoire] = useState(null);
   const [isClient, setIsClient] = useState(false); // Etat pour gérer l'exécution côté client
+  const [searchTerm, setSearchTerm] = useState("");
   const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   useEffect(() => {
     setIsClient(true); // Quand le composant est monté côté client
   }, []);
 
-  const fetchMemoires = async (status = 'validated') => {
+  const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
+    search = search || ""; 
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire?status=${status}`);
-      if (!response.ok) {
-        throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
-      }
-  
-      const data = await response.json();
-      console.log("Données reçues :", data);
-  
-      if (data && Array.isArray(data.memoire)) {
-        setMemoires(data.memoire);
-      } else {
-        console.error('Format inattendu des données reçues :', data);
-      }
+        let url = `http://localhost:5000/api/memoire?status=${status}`;
+        if (cycle) url += `&cycle=${cycle}`;
+        if (typeof search === "string" && search.trim() !== "") {
+            url += `&search=${encodeURIComponent(search.toLowerCase())}`;
+        }
+        if (sortBy) url += `&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data && Array.isArray(data.memoire)) {
+            let filteredMemoires = data.memoire.filter(memoire =>
+                Object.values(memoire).some(value => 
+                    value && value.toString().toLowerCase().includes(search.toLowerCase())
+                )
+            );
+
+            // Trier les résultats en fonction du champ choisi
+            filteredMemoires.sort((a, b) => {
+                let valueA = a[sortBy];
+                let valueB = b[sortBy];
+
+                if (typeof valueA === "number" && typeof valueB === "number") {
+                    return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
+                } else {
+                    return sortOrder === "asc"
+                        ? valueA?.toString().localeCompare(valueB?.toString())
+                        : valueB?.toString().localeCompare(valueA?.toString());
+                }
+            });
+
+            setMemoires(filteredMemoires);
+        } else {
+            console.error("Format inattendu des données reçues :", data);
+        }
     } catch (error) {
-      console.error('Erreur lors de la récupération des mémoires :', error.message);
+        console.error("Erreur lors de la récupération des mémoires :", error.message);
     }
-  };
+};
+
 
   useEffect(() => {
-    fetchMemoires('validated');
-  }, []);
+    if (searchTerm) {
+      fetchMemoires('validated', '', searchTerm);
+    } else {
+      fetchMemoires('validated');
+    }
+  }, [searchTerm]);
 
   const getPdfThumbnail = async (pdfUrl) => {
     const loadingTask = pdfjsLib.getDocument(pdfUrl);
@@ -84,15 +117,24 @@ useEffect(() => {
             
             {/* Barre de recherche modernisée */}
             <div className="flex-1 max-w-xl mx-8">
-              <div className="relative group">
-                <input
-                  type="text"
-                  placeholder="Rechercher un mémoire..."
-                  className="w-full px-6 py-3 border-none rounded-full bg-gray-100/80 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white"
-                />
-                <Search className="absolute right-4 top-3 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
-              </div>
+  <div className="relative flex items-center bg-gray-100/80 rounded-full group">
+    {/* Champ de recherche */}
+    <input
+  type="text"
+  placeholder="Rechercher un mémoire..."
+  className="w-full px-6 py-3 border-none bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white rounded-l-full"
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value || "")}
+
+/>
+
+    {/* Icône de recherche */}
+    <Search className="absolute right-40 top-3 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
+
+    {/* Sélecteur de cycle */}
+  </div>
             </div>
+
             
             <div className="flex items-center space-x-6">
               <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
@@ -109,7 +151,7 @@ useEffect(() => {
             {['Home', 'Books', 'Magazines', 'Textbooks', 'Audiobooks', 'Recommended', 'Sale'].map((item) => (
               <a
                 key={item}
-                href="#"
+                href={item === 'Books' ? '#current-resumes' : '#'}
                 className="relative text-gray-600 hover:text-blue-500 transition-colors duration-300 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-blue-500 hover:after:w-full after:transition-all"
               >
                 {item}
@@ -148,7 +190,7 @@ useEffect(() => {
       {/* Section des mémoires avec effet de carte moderne */}
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="flex items-center justify-between mb-12">
-          <h2 className="text-4xl font-bold text-gray-800">Current Resumes</h2>
+          <h2 id="current-resumes" className="text-4xl font-bold text-gray-800">Current Resumes</h2>
           <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors text-lg">
             View All → 
           </a>
