@@ -5,6 +5,15 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  service: "gmail", // Ou autre service (Yahoo, Outlook, etc.)
+  auth: {
+    user: "sophiamba17@gmail.com", // Remplace par ton email
+    pass: "uomg lvjg kgso ihib" // Remplace par ton mot de passe ou une App Password
+  }
+});
 
 
 const dbConfig = {
@@ -59,6 +68,8 @@ if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads", { recursive: true });
 }
 
+
+
 // Route pour la soumission des données
 app.post("/api/memoire", upload.single("file"), (req, res) => {
   const { libelle, annee, cycle, speciality, university, description, id_etudiant } =
@@ -111,6 +122,29 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
   });
 });
 
+// app.post("/api/etudiant", async (req, res) => {
+//   const { name, surname, email, password } = req.body;
+
+//   if (!name || !surname || !email || !password) {
+//     return res.status(400).json({ message: "Tous les champs sont obligatoires." });
+//   }
+
+//   try {
+//     const hashedPassword = await bcrypt.hash(password, 10); // Hachage avec un salt de 10
+
+//     const query = `INSERT INTO etudiant(name, surname, email, password) VALUES(?, ?, ?, ?)`;
+//     db.query(query, [name, surname, email, hashedPassword], (err, result) => {
+//       if (err) {
+//         console.error("Erreur lors de l'insertion :", err);
+//         return res.status(500).json({ message: "Erreur interne du serveur." });
+//       }
+//       res.status(201).json({ message: "Inscription réussie !" });
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Erreur lors du hachage du mot de passe." });
+//   }
+// });
+
 app.post("/api/etudiant", async (req, res) => {
   const { name, surname, email, password } = req.body;
 
@@ -119,21 +153,157 @@ app.post("/api/etudiant", async (req, res) => {
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10); // Hachage avec un salt de 10
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const activationCode = generateActivationCode();
 
-    const query = `INSERT INTO etudiant(name, surname, email, password) VALUES(?, ?, ?, ?)`;
-    db.query(query, [name, surname, email, hashedPassword], (err, result) => {
+    const query = `
+      INSERT INTO etudiant (name, surname, email, password, code, email_activated)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(query, [name, surname, email, hashedPassword, activationCode, false], async (err, result) => {
       if (err) {
         console.error("Erreur lors de l'insertion :", err);
         return res.status(500).json({ message: "Erreur interne du serveur." });
       }
-      res.status(201).json({ message: "Inscription réussie !" });
+
+      // Envoi de l'email avec le code d'activation
+      const subject = "Activation de votre compte AmphiMill";
+      const text = `Bonjour ${name},\n\nVotre code d'activation est : ${activationCode}\nVeuillez entrer ce code pour activer votre compte.\n\nMerci !`;
+      const html = `<p>Bonjour <strong>${name}</strong>,</p>
+                    <p>Votre code d'activation est : <strong>${activationCode}</strong></p>
+                    <p>Veuillez entrer ce code pour activer votre compte.</p>
+                    <p>Merci !</p>`;
+
+      const emailResult = await sendEmail(email, subject, text, html);
+
+      if (!emailResult.success) {
+        return res.status(500).json({ message: "Erreur lors de l'envoi de l'email d'activation." });
+      }
+
+      res.status(201).json({ message: "Inscription réussie ! Un email de validation a été envoyé." });
     });
   } catch (error) {
     res.status(500).json({ message: "Erreur lors du hachage du mot de passe." });
   }
 });
+//activqtion de compte 
+app.post("/api/etudiant/activate", (req, res) => {
+  const { email, code } = req.body;
+  console.log("Données reçues:", email, code); 
 
+  if (!email || !code) {
+    return res.status(400).json({ message: "Email et code sont requis." });
+  }
+
+  const query = `SELECT code FROM etudiant WHERE email = ?`;
+
+  db.query(query, [email], (err, results) => {
+    if (err) {
+      console.error("Erreur lors de la vérification du code :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    }
+
+    if (results.length === 0 || results[0].code !== code) {
+      return res.status(400).json({ message: "Code incorrect." });
+    }
+
+    const updateQuery = `UPDATE etudiant SET email_activated = true WHERE email = ?`;
+    db.query(updateQuery, [email], (updateErr) => {
+      if (updateErr) {
+        console.error("Erreur lors de l'activation du compte :", updateErr);
+        return res.status(500).json({ message: "Erreur interne du serveur." });
+      }
+
+      res.status(200).json({ message: "Compte activé avec succès !" });
+    });
+  });
+});
+
+
+// app.post("/api/login", (req, res) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password) {
+//     return res.status(400).json({ message: "Email et mot de passe requis." });
+//   }
+
+//   const executeQuery = (query, params, role) => {
+//     return new Promise((resolve, reject) => {
+//       db.query(query, params, async (err, results) => {
+//         if (err) return reject(err);
+
+//         if (results.length > 0) {
+//           const user = results[0];
+//           const isValid = await bcrypt.compare(password, user.password); // Comparer les mots de passe
+
+//           if (isValid) {
+//             delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
+//             resolve({ role, user });
+//           } else {
+//             resolve(null);
+//           }
+//         } else {
+//           resolve(null);
+//         }
+//       });
+//     });
+//   };
+
+//   const adminQuery = "SELECT * FROM admin WHERE email = ?";
+//   const studentQuery = "SELECT * FROM etudiant WHERE email = ?";
+
+//   Promise.all([
+//     executeQuery(adminQuery, [email], "admin"),
+//     executeQuery(studentQuery, [email], "etudiant"),
+//   ])
+//     .then(([adminResult, studentResult]) => {
+//       if (adminResult) {
+//         return res.status(200).json({
+//           message: "Connexion administrateur réussie.",
+//           role: adminResult.role,
+//           user: adminResult.user,
+//         });
+//       }
+//       if (studentResult) {
+        
+//         return res.status(200).json({
+//           message: "Connexion réussie.",
+//           role: studentResult.role,
+//           user: studentResult.user,
+//         });
+//       }
+//       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
+//     })
+//     .catch((err) => {
+//       console.error("Erreur lors de la connexion :", err);
+//       return res.status(500).json({ message: "Erreur interne du serveur." });
+//     });
+// });
+const executeQuery = (query, params, role) => {
+  return new Promise((resolve, reject) => {
+    db.query(query, params, async (err, results) => {
+      if (err) return reject(err);
+
+      if (results.length > 0) {
+        const user = results[0];
+        const isValid = await bcrypt.compare(params[1], user.password); // Comparer les mots de passe
+
+        if (isValid) {
+          if (role === "etudiant" && !user.email_activated) {
+            return resolve({ notActivated: true });
+          }
+          delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
+          resolve({ role, user });
+        } else {
+          resolve(null);
+        }
+      } else {
+        resolve(null);
+      }
+    });
+  });
+};
 
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
@@ -142,34 +312,12 @@ app.post("/api/login", (req, res) => {
     return res.status(400).json({ message: "Email et mot de passe requis." });
   }
 
-  const executeQuery = (query, params, role) => {
-    return new Promise((resolve, reject) => {
-      db.query(query, params, async (err, results) => {
-        if (err) return reject(err);
-
-        if (results.length > 0) {
-          const user = results[0];
-          const isValid = await bcrypt.compare(password, user.password); // Comparer les mots de passe
-
-          if (isValid) {
-            delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
-            resolve({ role, user });
-          } else {
-            resolve(null);
-          }
-        } else {
-          resolve(null);
-        }
-      });
-    });
-  };
-
   const adminQuery = "SELECT * FROM admin WHERE email = ?";
   const studentQuery = "SELECT * FROM etudiant WHERE email = ?";
 
   Promise.all([
-    executeQuery(adminQuery, [email], "admin"),
-    executeQuery(studentQuery, [email], "etudiant"),
+    executeQuery(adminQuery, [email, password], "admin"),
+    executeQuery(studentQuery, [email, password], "etudiant"),
   ])
     .then(([adminResult, studentResult]) => {
       if (adminResult) {
@@ -180,6 +328,9 @@ app.post("/api/login", (req, res) => {
         });
       }
       if (studentResult) {
+        if (studentResult.notActivated) {
+          return res.status(403).json({ message: "Veuillez activer votre compte avant de vous connecter." });
+        }
         return res.status(200).json({
           message: "Connexion réussie.",
           role: studentResult.role,
@@ -193,8 +344,6 @@ app.post("/api/login", (req, res) => {
       return res.status(500).json({ message: "Erreur interne du serveur." });
     });
 });
-
-
 
 app.get("/uploads/:filename", (req, res) => {
   const fileName = req.params.filename;
@@ -211,8 +360,6 @@ app.get("/uploads/:filename", (req, res) => {
     }
   });
 });
-
-
 
 app.get("/api/memoireEtudiant", (req, res) => {
   const { id_etudiant } = req.query;
@@ -245,7 +392,6 @@ app.get("/api/memoireEtudiant", (req, res) => {
   });
 });
 
-
 // Récupérer tous les mémoires avec les informations de l'étudiant
 app.get("/api/memoire", (req, res) => {
   const { status } = req.query; // Filtre sur le statut (validé, rejeté, etc.)
@@ -273,6 +419,64 @@ app.get("/api/memoire", (req, res) => {
     }
 
     res.status(200).json({ memoire: results });
+  });
+});
+
+app.put("/api/memoire/:id/valider", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ message: "Le statut est requis." });
+  }
+
+  // Mise à jour du statut du mémoire
+  const updateQuery = "UPDATE memoire SET status = ? WHERE id_memoire = ?";
+  db.query(updateQuery, [status, id], (err, result) => {
+    if (err) {
+      console.error("Erreur lors de la mise à jour du mémoire :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Mémoire non trouvé." });
+    }
+
+    // Récupérer l'email de l'étudiant concerné
+    const getEmailQuery = `
+      SELECT e.email, e.name, m.libelle 
+      FROM memoire m 
+      JOIN etudiant e ON m.id_etudiant = e.id_etudiant 
+      WHERE m.id_memoire = ?
+    `;
+
+    db.query(getEmailQuery, [id], async (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la récupération des informations de l'étudiant :", err);
+        return res.status(500).json({ message: "Erreur interne du serveur." });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: "Étudiant non trouvé." });
+      }
+
+      const { email, name, libelle } = results[0];
+
+      // Préparer et envoyer l'email
+      const subject = `Validation de votre mémoire`;
+      const text = `Bonjour ${name},\n\nVotre mémoire "${libelle}" a été ${status}.\nMerci !`;
+      const html = `<p>Bonjour <strong>${name}</strong>,</p>
+                    <p>Votre mémoire "<strong>${libelle}</strong>" a été <strong>${status}</strong>.</p>
+                    <p>Merci !</p>`;
+
+      const emailResult = await sendEmail(email, subject, text, html);
+
+      if (!emailResult.success) {
+        return res.status(500).json({ message: "Mémoire validé, mais erreur lors de l'envoi de l'email." });
+      }
+
+      res.status(200).json({ message: `Mémoire ${status} et notification envoyée à ${email}.` });
+    });
   });
 });
 
@@ -320,11 +524,6 @@ app.delete("/api/memoire/:id", (req, res) => {
     });
   });
 });
-
-
-
-//updateMemoire
-
 
 //Recuperer les memoires valider ou rejeter 
 // Ajoute un champ "raison_rejet" pour stocker la raison du rejet dans la base de données
@@ -378,12 +577,6 @@ app.patch("/api/memoire/:id", (req, res) => {
   });
 });
 
-function sendEmailToStudent(email, reason) {
-  // Code fictif pour envoyer un email
-  console.log(`Email envoyé à ${email}: Votre mémoire a été rejeté. Raison: ${reason}`);
-}
-
-
 //recuperer les memoires valider pour le home 
 app.get("/api/memoire", (req, res) => {
   // Récupérer le paramètre de filtre 'status' de la requête
@@ -415,17 +608,41 @@ app.get("/api/memoire", (req, res) => {
   });
 });
 
+app.get("/api/memoire/suggestions", (req, res) => {
+  const searchTerm = req.query.q; // Récupérer le terme de recherche depuis la requête
+
+  if (!searchTerm) {
+    return res.status(400).json({ message: "Veuillez fournir un terme de recherche." });
+  }
+
+  const query = `
+    SELECT DISTINCT libelle 
+    FROM memoire 
+    WHERE libelle LIKE ? 
+    LIMIT 10`; // Limite à 10 suggestions
+
+  db.query(query, [`%${searchTerm}%`], (err, results) => {
+    if (err) {
+      console.error("Erreur lors de la récupération des suggestions :", err);
+      return res.status(500).json({ message: "Erreur lors de la récupération des suggestions." });
+    }
+
+    const suggestions = results.map(row => row.libelle);
+    res.status(200).json({ suggestions });
+  });
+});
 
 app.put("/api/memoire/reject/:id", (req, res) => {
   const { id } = req.params;
   const { rejection_reason } = req.body;
 
-  if (!id || !rejection_reason) {
-    return res.status(400).json({ message: "ID et raison du rejet sont requis." });
+  if (!rejection_reason) {
+    return res.status(400).json({ message: "La raison du rejet est requise." });
   }
 
+  // Mise à jour du statut et de la raison du rejet
   const updateQuery = `UPDATE memoire SET status = 'rejected', rejection_reason = ? WHERE id_memoire = ?`;
-  
+
   db.query(updateQuery, [rejection_reason, id], (err, result) => {
     if (err) {
       console.error("Erreur SQL lors du rejet du mémoire :", err);
@@ -436,30 +653,50 @@ app.put("/api/memoire/reject/:id", (req, res) => {
       return res.status(404).json({ message: "Mémoire non trouvé." });
     }
 
-    // Récupérer l'ID de l'étudiant concerné
-    const getStudentQuery = `SELECT id_etudiant FROM memoire WHERE id_memoire = ?`;
-    db.query(getStudentQuery, [id], (err, studentResult) => {
+    // Récupérer les infos de l'étudiant concerné
+    const getStudentQuery = `
+      SELECT e.id_etudiant, e.email, e.name, m.libelle 
+      FROM memoire m 
+      JOIN etudiant e ON m.id_etudiant = e.id_etudiant 
+      WHERE m.id_memoire = ?
+    `;
+
+    db.query(getStudentQuery, [id], async (err, studentResult) => {
       if (err) {
         console.error("Erreur SQL lors de la récupération de l'étudiant :", err);
         return res.status(500).json({ message: "Erreur interne du serveur." });
       }
 
       if (studentResult.length === 0) {
-        return res.status(200).json({ message: "Mémoire rejeté mais étudiant non trouvé." });
+        return res.status(404).json({ message: "Étudiant non trouvé." });
       }
 
-      const id_etudiant = studentResult[0].id_etudiant;
-      const message = `Votre mémoire a été rejeté pour la raison suivante : ${rejection_reason}`;
+      const { id_etudiant, email, name, libelle } = studentResult[0];
+      const message = `Votre mémoire "${libelle}" a été rejeté pour la raison suivante : ${rejection_reason}`;
 
-      // Insérer la notification
+      // Envoi de l'email à l'étudiant
+      const subject = `Rejet de votre mémoire`;
+      const text = `Bonjour ${name},\n\nVotre mémoire "${libelle}" a été rejeté.\n\nRaison : ${rejection_reason}\n\nMerci de prendre en compte ces remarques.`;
+      const html = `<p>Bonjour <strong>${name}</strong>,</p>
+                    <p>Votre mémoire "<strong>${libelle}</strong>" a été <strong>rejeté</strong>.</p>
+                    <p><strong>Raison :</strong> ${rejection_reason}</p>
+                    <p>Merci de prendre en compte ces remarques.</p>`;
+
+      const emailResult = await sendEmail(email, subject, text, html);
+
+      if (!emailResult.success) {
+        return res.status(500).json({ message: "Mémoire rejeté, mais erreur lors de l'envoi de l'email." });
+      }
+
+      // Insérer une notification en base de données
       const notificationQuery = `INSERT INTO notifications (id_etudiant, message) VALUES (?, ?)`;
       db.query(notificationQuery, [id_etudiant, message], (err, notifResult) => {
         if (err) {
           console.error("Erreur SQL lors de l'insertion de la notification :", err);
-          return res.status(500).json({ message: "Erreur interne du serveur." });
+          return res.status(500).json({ message: "Mémoire rejeté, mais erreur lors de l'ajout de la notification." });
         }
 
-        res.status(200).json({ message: "Mémoire rejeté et notification envoyée." });
+        res.status(200).json({ message: "Mémoire rejeté, notification envoyée et email transmis." });
       });
     });
   });
@@ -515,6 +752,54 @@ app.get("/api/admin", (req, res) => {
   });
 });
 
+// envoie de mail 
+const generateActivationCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase(); // Exemple : "A1B2C3"
+};
+//
+const sendEmail = async (to, subject, text, html) => {
+  const mailOptions = {
+    from: "AmphiMill <sophiamba17@gmail.com>",
+    to,
+    subject,
+    text,
+    html,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email envoyé :", info.response);
+    return { success: true, info };
+  } catch (error) {
+    console.error("Erreur lors de l'envoi de l'email :", error);
+    return { success: false, error };
+  }
+};
+app.post("/api/send-email", (req, res) => {
+  const { to, subject, text, html } = req.body;
+
+  if (!to || !subject || (!text && !html)) {
+    return res.status(400).json({ message: "Tous les champs sont obligatoires." });
+  }
+  console.log(req.body)
+
+  const mailOptions = {
+    from: `AmphiMill`,
+    to,
+    subject,
+    text,
+    html,
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      console.error("Erreur lors de l'envoi de l'email:", err);
+      return res.status(500).json({ message: "Erreur lors de l'envoi de l'email." });
+    }
+
+    res.status(200).json({ message: "Email envoyé avec succès !", info });
+  });
+});
 
 // Mettre à jour le statut d'une mémoire
 // app.patch("/api/memoire/:id", (req, res) => {

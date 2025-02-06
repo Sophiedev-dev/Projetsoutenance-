@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const Form = () => {
   const [name, setName] = useState('');
@@ -9,6 +10,7 @@ const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confPassword, setConfPassword] = useState('');
+  const router = useRouter(); // Initialisation du hook
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -40,6 +42,8 @@ const Form = () => {
         setEmail('');
         setPassword('');
         setConfPassword('');
+        console.log("Redirection avec email:", email);  // Ajout de log pour vérifier l'email
+        router.push(`/verification?email=${encodeURIComponent(email)}`);
       } else {
         const errorData = await response.json();
         alert(`Erreur : ${errorData.message}`);
