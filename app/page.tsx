@@ -81,30 +81,31 @@ const Homepage = () => {
     }
   }, [searchTerm]);
 
-const fetchSuggestions = async (query) => {
-  if (!query.trim()) {
-    setSuggestions([]);
-    return;
-  }
-
-  try {
-    const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(query)}`);
-    if (!response.ok) {
-      throw new Error(`Erreur serveur : ${response.status}`);
+  const fetchSuggestions = async (query) => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      return;
     }
-
-    const data = await response.json();
-    setSuggestions(data.suggestions || []);
-  } catch (error) {
-    console.error("Erreur lors de la récupération des suggestions :", error);
-  }
-};
-
-const handleSearchChange = (e) => {
-  const value = e.target.value;
-  setSearchTerm(value);
-  fetchSuggestions(value);
-};
+  
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(query)}`);
+      if (!response.ok) {
+        throw new Error(`Erreur serveur : ${response.status}`);
+      }
+  
+      const data = await response.json();
+      setSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des suggestions :", error);
+    }
+  };
+  
+  // Mise à jour en temps réel des suggestions
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    fetchSuggestions(value);
+  };
 
 
   const getPdfThumbnail = async (pdfUrl) => {
@@ -145,48 +146,43 @@ useEffect(() => {
             
             {/* Barre de recherche modernisée */}
             <div className="flex-1 max-w-xl mx-8">
-  <div className="relative flex items-center bg-gray-100/80 rounded-full group">
-    {/* Champ de recherche */}
-    <input
-  type="text"
-  placeholder="Rechercher un mémoire..."
-  className="w-full px-6 py-3 border-none bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white rounded-l-full"
-  value={searchTerm}
-  onChange={(e) => setSearchTerm(e.target.value || "")}
+      <div className="relative flex items-center bg-gray-100/80 rounded-full group">
+        {/* Icône de recherche à gauche */}
+        <Search className="absolute left-4 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
 
-/>
-    {/* Icône de recherche */}
-    <Search className="absolute right-40 top-3 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
- 
-    {suggestions.length > 0 && (
-  <ul className="absolute left-0 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg z-50">
-    {suggestions.map((suggestion, index) => (
-      <li
-        key={index}
-        className="px-4 py-2 hover:bg-gray-200 cursor-pointer"
-        onClick={() => {
-          setSearchTerm(suggestion);
-          setSuggestions([]);
-          fetchMemoires('validated', '', suggestion);
-        }}
-      >
-        {suggestion}
-      </li>
-    ))}
-  </ul>
-)}
+        {/* Champ de recherche */}
+        <input
+          type="text"
+          placeholder="Rechercher un mémoire..."
+          className="w-full pl-12 pr-6 py-3 border-none bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white rounded-full"
+          value={searchTerm}
+          onChange={(e) => {
+            const value = e.target.value || "";
+            setSearchTerm(value);
+            fetchSuggestions(value); // Appel API à chaque frappe
+          }}
+        />
 
-  </div>
-            </div>
-
-            
-            <div className="flex items-center space-x-6">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <ShoppingCart className="text-gray-600 hover:text-blue-500 transition-colors" size={24} />
-              </button>
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <User className="text-gray-600 hover:text-blue-500 transition-colors" size={24} />
-              </button>
+        {/* Suggestions affichées sous l'input */}
+        {suggestions.length > 0 && (
+          <ul className="absolute top-full left-0 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-md z-50 overflow-hidden">
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                className="flex items-center px-4 py-2 hover:bg-gray-200 cursor-pointer transition-all duration-200"
+                onClick={() => {
+                  setSearchTerm(suggestion);
+                  setSuggestions([]);
+                  fetchMemoires("validated", "", suggestion);
+                }}
+              >
+                <Search className="mr-2 text-gray-500" size={16} />
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
             </div>
           </div>
 

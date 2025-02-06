@@ -608,29 +608,37 @@ app.get("/api/memoire", (req, res) => {
   });
 });
 
-app.get("/api/memoire/suggestions", (req, res) => {
-  const searchTerm = req.query.q; // Récupérer le terme de recherche depuis la requête
-
-  if (!searchTerm) {
-    return res.status(400).json({ message: "Veuillez fournir un terme de recherche." });
+app.get('/api/memoire/suggestions', (req, res) => {
+  const query = req.query.q?.toLowerCase();
+  if (!query) {
+    console.log("Aucune requête reçue pour les suggestions.");
+    return res.json({ suggestions: [] });
   }
 
-  const query = `
-    SELECT DISTINCT libelle 
+  // Requête SQL avec LIKE insensible à la casse
+  const sql = `
+    SELECT libelle 
     FROM memoire 
-    WHERE libelle LIKE ? 
-    LIMIT 10`; // Limite à 10 suggestions
+    WHERE LOWER(libelle) LIKE ? 
+    AND status = 'validated' 
+    LIMIT 5
+  `;
 
-  db.query(query, [`%${searchTerm}%`], (err, results) => {
+  const queryParam = [`%${query}%`]; // Ajouter % pour une recherche partielle
+
+  console.log("Exécution de la requête :", sql, queryParam);
+
+  db.query(sql, queryParam, (err, results) => {
     if (err) {
-      console.error("Erreur lors de la récupération des suggestions :", err);
-      return res.status(500).json({ message: "Erreur lors de la récupération des suggestions." });
+      console.error("Erreur API suggestions :", err);
+      return res.status(500).json({ error: "Erreur serveur", details: err.message });
     }
 
-    const suggestions = results.map(row => row.libelle);
-    res.status(200).json({ suggestions });
+    res.json({ suggestions: results.map(m => m.libelle) });
   });
 });
+
+
 
 app.put("/api/memoire/reject/:id", (req, res) => {
   const { id } = req.params;
