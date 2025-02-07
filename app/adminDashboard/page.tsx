@@ -123,6 +123,26 @@ const AdminDashboard = () => {
 
   const handleMemoireAction = async (memoireId, action) => {
     try {
+      const storedUser = localStorage.getItem('user');
+      const user = storedUser ? JSON.parse(storedUser) : null;
+      if (action === 'signed') {
+        
+        const signer = "Le Prof"+" "+user.user.name; 
+        const response = await fetch(`http://localhost:5000/api/sign/${memoireId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signer }),
+        });
+        
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || 'Erreur de signature');
+        }
+
+        toast.success(result.message || 'Document signé avec succès !');
+      } else{
+
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
         method: 'PATCH',
         headers: {
@@ -142,8 +162,10 @@ const AdminDashboard = () => {
         toast.success('Le mémoire a été validé avec succès !');
       } else if (action === 'rejected') {
         toast.error('Le mémoire a été rejeté !');
+      }else if (action === 'signed') {
+        toast.error('Le mémoire a été signé !');
       }
-
+    }
       fetchMemoires();
     } catch (error) {
       console.error("Erreur lors de l'action sur le mémoire :", error.message);
@@ -234,6 +256,12 @@ const AdminDashboard = () => {
                         className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
                       >
                         Valider
+                      </button>
+                      <button
+                        onClick={() => handleMemoireAction(memoire.id_memoire, 'signed')}
+                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
+                      >
+                        Signer
                       </button>
                       <button
                         onClick={() => handleRejection(memoire.id_memoire, 'rejected')}

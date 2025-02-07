@@ -6,6 +6,8 @@ const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
 
+const { PDFDocument, rgb } = require('pdf-lib');
+
 
 const dbConfig = {
   user: "root",
@@ -135,6 +137,65 @@ app.post("/api/etudiant", async (req, res) => {
 });
 
 
+
+// Route pour signer un document
+app.post('/api/sign/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { signer } = req.body;
+
+    // Récupérer le document original
+    const [memoire] = await db.promise().query(
+      'SELECT * FROM memoire WHERE id_memoire = ?',
+      [id]
+    );
+
+    if (!memoire.length) {
+      return res.status(404).json({ message: 'Document non trouvé' });
+    }
+
+    const originalPath = memoire[0].file_path;
+    const pdfBytes = await fs.promises.readFile(originalPath);
+
+    // Manipulation PDF
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+
+    // Ajouter la signature
+    firstPage.drawText(`Signé électroniquement par: ${signer}`, {
+      x: 50,
+      y: 50,
+      size: 12,
+      color: rgb(0, 0, 0),
+    });
+
+    // Sauvegarder le nouveau PDF
+    const signedBytes = await pdfDoc.save();
+    const signedFileName = `signed_${path.basename(originalPath)}`;
+    const signedPath = path.join('uploads', signedFileName);
+    await fs.promises.writeFile(signedPath, signedBytes);
+
+    // Mettre à jour la base de données
+    await db.promise().query(
+      'INSERT INTO signed_documents (memoire_id, signed_path, signer_info) VALUES (?, ?, ?)',
+      [id, signedPath, signer]
+    );
+
+    // Mettre à jour le statut
+    await db.promise().query(
+      'UPDATE memoire SET status = "signed" WHERE id_memoire = ?',
+      [id]
+    );
+
+    res.json({ message: 'Document signé avec succès', signedPath });
+  } catch (error) {
+    console.error('Erreur signature:', error);
+    res.status(500).json({ message: 'Échec de la signature' });
+  }
+});
+
+
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
@@ -193,6 +254,67 @@ app.post("/api/login", (req, res) => {
       return res.status(500).json({ message: "Erreur interne du serveur." });
     });
 });
+/*app.post("/api/login", (req, res) => {
+  const { email, password } = req.body;
+
+  // Validation des entrées
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email et mot de passe requis." });
+  }
+
+  console.log("Tentative de connexion - Email:", email);
+
+  // Fonction pour exécuter une requête SQL et traiter le résultat
+  const executeQuery = (query, params, role) => {
+    return new Promise((resolve, reject) => {
+      db.query(query, params, (err, results) => {
+        if (err) {
+          reject(err);
+        } else if (results.length > 0) {
+          const user = results[0];
+          delete user.password; // Retirer le mot de passe avant de retourner les données
+          resolve({ role, user });
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  }; 
+
+  // Vérifier les deux rôles : admin et étudiant
+  const adminQuery = "SELECT * FROM admin WHERE email = ? AND password = ?";
+  const studentQuery = "SELECT * FROM etudiant WHERE email = ? AND password = ?";
+
+  Promise.all([
+    executeQuery(adminQuery, [email, password], "admin"),
+    executeQuery(studentQuery, [email, password], "etudiant"),
+  ])
+    .then(([adminResult, studentResult]) => {
+      if (adminResult) {
+        return res.status(200).json({
+          message: "Connexion administrateur réussie.",
+          role: adminResult.role,
+          user: adminResult.user,
+        });
+      }
+      if (studentResult) {
+        return res.status(200).json({
+          message: "Connexion réussie.",
+          role: studentResult.role,
+          user: studentResult.user,
+        });
+      }
+
+      // Aucun utilisateur trouvé
+      return res.status(401).json({ message: "Email ou mot de passe incorrect." });
+    })
+    .catch((err) => {
+      console.error("Erreur lors de la connexion :", err);
+      return res.status(500).json({ message: "Erreur interne du serveur." });
+    });
+});*/
+
+
 
 
 
