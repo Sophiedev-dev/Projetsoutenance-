@@ -4,10 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Users, FileText, Settings, ChevronDown, Book, Trash, 
   Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
-  PieChart, TrendingUp, UserCheck, Clock
+  PieChart, TrendingUp, UserCheck, Clock,
+  Trash2
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
+import UserModal from './userModal';
+import TrashContent from './TrashContent';
 
 
 const AdminDashboard = () => {
@@ -16,8 +19,11 @@ const AdminDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedMemoire, setSelectedMemoire] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [filterCycle, setFilterCycle] = useState('all');
-  // const [specialities, setSpecialities] = useState([]);
   const [filterSpeciality, setFilterSpeciality] = useState('all');
   const [stats, setStats] = useState({
     total: 0,
@@ -75,7 +81,6 @@ const AdminDashboard = () => {
     }
   };
   
-  
 
   const fetchMemoires = async () => {
     try {
@@ -94,6 +99,208 @@ const AdminDashboard = () => {
       toast.error('Erreur lors de la récupération des mémoires');
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://localhost:5000/api/users');
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.users)) {
+        setUsers(data.users);
+      } else {
+        console.error('Erreur lors de la récupération des utilisateurs:', data.message);
+        toast.error('Erreur lors de la récupération des utilisateurs');
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération des utilisateurs:', error);
+      toast.error('Erreur lors de la récupération des utilisateurs');
+      setUsers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (userData: any) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) throw new Error('Erreur lors de la création');
+      toast.success('Utilisateur créé avec succès');
+      fetchUsers();
+      setIsUserModalOpen(false);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleUpdateUser = async (id, userData) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) throw new Error('Erreur lors de la mise à jour');
+      toast.success('Utilisateur mis à jour avec succès');
+      fetchUsers();
+      setIsUserModalOpen(false);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir déplacer cet utilisateur vers la corbeille ?')) {
+      return;
+    }
+  
+    try {
+      // Vérifiez que l'URL est correcte
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/soft-delete`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la suppression');
+      }
+  
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success('Utilisateur déplacé vers la corbeille');
+        // Rafraîchir la liste des utilisateurs
+        fetchUsers();
+      } else {
+        toast.error(data.message || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur détaillée:', error);
+      toast.error(error.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  
+
+  const renderUsers = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white rounded-2xl shadow-lg p-6"
+    >
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Gestion des Utilisateurs</h2>
+        <button
+          onClick={() => {
+            setSelectedUser(null);
+            setIsUserModalOpen(true);
+          }}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+        >
+          Ajouter un utilisateur
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-6 py-3 text-left">Nom</th>
+                <th className="px-6 py-3 text-left">Prénom</th>
+                <th className="px-6 py-3 text-left">Email</th>
+                <th className="px-6 py-3 text-left">Université</th>
+                <th className="px-6 py-3 text-left">Faculté</th>
+                <th className="px-6 py-3 text-left">Spécialité</th>
+                <th className="px-6 py-3 text-left">Statut</th>
+                <th className="px-6 py-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <tr key={user.id_etudiant} className="border-b">
+                    <td className="px-6 py-4">{user.name}</td>
+                    <td className="px-6 py-4">{user.surname}</td>
+                    <td className="px-6 py-4">{user.email}</td>
+                    <td className="px-6 py-4">{user.university || '-'}</td>
+                    <td className="px-6 py-4">{user.faculty || '-'}</td>
+                    <td className="px-6 py-4">{user.speciality || '-'}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {user.is_active ? 'Actif' : 'Inactif'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setIsUserModalOpen(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id_etudiant)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    Aucun utilisateur trouvé
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isUserModalOpen && (
+        <UserModal
+          user={selectedUser}
+          onClose={() => setIsUserModalOpen(false)}
+          onSubmit={(userData) => {
+            if (selectedUser) {
+              handleUpdateUser(selectedUser.id_etudiant, userData);
+            } else {
+              handleCreateUser(userData);
+            }
+          }}
+        />
+      )}
+    </motion.div>
+  );
 
   const handleRejection = async (memoireId) => {
     if (!rejectionReason) {
@@ -167,16 +374,6 @@ const AdminDashboard = () => {
     }
   };
 
-//   useEffect(() => {
-//     if (topSpecialities) {
-//         const formatted = topSpecialities.map(s => ({
-//             speciality: s.speciality ?? "Non spécifié",
-//             count: s.count
-//         }));
-//         setSpecialities(formatted);
-//     }
-// }, [topSpecialities]);
-
   const renderDashboard = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {/* Cartes de statistiques */}
@@ -185,6 +382,7 @@ const AdminDashboard = () => {
       { id: "valides", title: "Validés", value: stats.validated, icon: <CheckCircle className="h-8 w-8 text-green-500" /> },
       { id: "en-attente", title: "En attente", value: stats.pending, icon: <Clock className="h-8 w-8 text-yellow-500" /> },
       { id: "rejetes", title: "Rejetés", value: stats.rejected, icon: <XCircle className="h-8 w-8 text-red-500" /> },
+      { id: "utilisateurs", title: "Utilisateurs", value: stats.totalUsers, icon: <Users className="h-8 w-8 text-purple-500" /> }
     ].map((stat) => (
       <div key={stat.id} className="bg-white shadow-md rounded-lg p-4 flex items-center">
         {stat.icon}
@@ -485,6 +683,17 @@ const AdminDashboard = () => {
               Tableau de bord
             </button>
             <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === 'users'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Users size={20} className="mr-3" />
+              Utilisateurs
+            </button>
+            <button
               onClick={() => setActiveTab('memoires')}
               className={`flex items-center w-full p-3 rounded-lg transition-colors ${
                 activeTab === 'memoires'
@@ -506,6 +715,17 @@ const AdminDashboard = () => {
               <Settings size={20} className="mr-3" />
               Paramètres
             </button>
+            <button
+               onClick={() => setActiveTab('trash')}
+               className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+               activeTab === 'trash'
+               ? 'bg-blue-500 text-white'
+               : 'text-gray-600 hover:bg-gray-50'
+               }`}
+              >
+               <Trash2 size={20} className="mr-3" />
+                 Corbeille
+              </button>
           </nav>
         </div>
       </motion.div>
@@ -519,12 +739,14 @@ const AdminDashboard = () => {
         >
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'memoires' && renderMemoires()}
+          {activeTab === 'users' && renderUsers()}
           {activeTab === 'settings' && (
             <div className="bg-white rounded-xl shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Paramètres</h2>
               <p>Configuration du système...</p>
             </div>
           )}
+          {activeTab === 'trash' && <TrashContent />}
         </motion.div>
       </div>
       <ToastContainer />

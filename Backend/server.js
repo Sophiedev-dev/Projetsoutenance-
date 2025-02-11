@@ -68,7 +68,350 @@ if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads", { recursive: true });
 }
 
+// Route pour récupérer tous les utilisateurs
+app.get("/api/users", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        id_etudiant,
+        name,
+        surname,
+        email,
+        phonenumber,
+        university,
+        faculty,
+        speciality,
+        email_activated,
+        is_active
+      FROM etudiant
+    `;
+    
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Erreur lors de la récupération des utilisateurs:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Erreur lors de la récupération des utilisateurs." 
+        });
+      }
+      res.json({ 
+        success: true, 
+        users: results 
+      });
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des utilisateurs:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Erreur lors de la récupération des utilisateurs." 
+    });
+  }
+});
+// Route pour créer un utilisateur
+app.post("/api/users", async (req, res) => {
+  const { name, surname, email, password, phonenumber, university, faculty, speciality } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const query = `
+      INSERT INTO etudiant (
+        name, 
+        surname, 
+        email, 
+        password, 
+        phonenumber, 
+        university, 
+        faculty, 
+        speciality, 
+        email_activated,
+        is_active
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, true, true)
+    `;
+    
+    const values = [
+      name, 
+      surname, 
+      email, 
+      hashedPassword, 
+      phonenumber || null, 
+      university || null, 
+      faculty || null, 
+      speciality || null
+    ];
 
+    db.query(query, values, (err, result) => {
+      if (err) {
+        console.error("Erreur lors de la création de l'utilisateur:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Erreur lors de la création de l'utilisateur." 
+        });
+      }
+      res.status(201).json({ 
+        success: true, 
+        message: "Utilisateur créé avec succès" 
+      });
+    });
+  } catch (error) {
+    console.error("Erreur lors de la création de l'utilisateur:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Erreur lors de la création de l'utilisateur." 
+    });
+  }
+});
+
+app.put("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, surname, email, is_active } = req.body;
+  try {
+    const query = `
+      UPDATE etudiant 
+      SET name = ?, surname = ?, email = ?, is_active = ?
+      WHERE id_etudiant = ?
+    `;
+    await db.promise().query(query, [name, surname, email, is_active, id]);
+    res.json({ message: "Utilisateur mis à jour avec succès" });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de l'utilisateur:", error);
+    res.status(500).json({ message: "Erreur lors de la mise à jour de l'utilisateur." });
+  }
+});
+
+app.delete("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = "DELETE FROM etudiant WHERE id_etudiant = ?";
+    await db.promise().query(query, [id]);
+    res.json({ message: "Utilisateur supprimé avec succès" });
+  } catch (error) {
+    console.error("Erreur lors de la suppression de l'utilisateur:", error);
+    res.status(500).json({ message: "Erreur lors de la suppression de l'utilisateur." });
+  }
+});
+
+// Route pour la "soft delete" des utilisateurs
+app.put("/api/users/:id/soft-delete", (req, res) => {
+  const { id } = req.params;
+  
+  // Vérifier d'abord si l'utilisateur existe
+  const checkQuery = "SELECT * FROM etudiant WHERE id_etudiant = ?";
+  
+  db.query(checkQuery, [id], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Erreur lors de la vérification:", checkErr);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Erreur lors de la vérification de l'utilisateur" 
+      });
+    }
+
+    if (checkResults.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Utilisateur non trouvé" 
+      });
+    }
+
+    // Commencer la transaction
+    db.beginTransaction((err) => {
+      if (err) {
+        console.error("Erreur de transaction:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Erreur lors de la suppression" 
+        });
+      }
+
+      // 1. Insérer dans deleted_users
+      const insertQuery = `
+        INSERT INTO deleted_users (
+          id_etudiant, name, surname, email, password, 
+          phonenumber, university, faculty, speciality, 
+          id_role, deleted_at
+        )
+        SELECT 
+          id_etudiant, name, surname, email, password, 
+          phonenumber, university, faculty, speciality, 
+          id_role, CURRENT_TIMESTAMP
+        FROM etudiant 
+        WHERE id_etudiant = ?
+      `;
+
+      db.query(insertQuery, [id], (insertErr) => {
+        if (insertErr) {
+          return db.rollback(() => {
+            console.error("Erreur d'insertion:", insertErr);
+            res.status(500).json({ 
+              success: false, 
+              message: "Erreur lors de la suppression" 
+            });
+          });
+        }
+
+        // 2. Supprimer de la table etudiant
+        const deleteQuery = "DELETE FROM etudiant WHERE id_etudiant = ?";
+        
+        db.query(deleteQuery, [id], (deleteErr) => {
+          if (deleteErr) {
+            return db.rollback(() => {
+              console.error("Erreur de suppression:", deleteErr);
+              res.status(500).json({ 
+                success: false, 
+                message: "Erreur lors de la suppression" 
+              });
+            });
+          }
+
+          // Valider la transaction
+          db.commit((commitErr) => {
+            if (commitErr) {
+              return db.rollback(() => {
+                console.error("Erreur de commit:", commitErr);
+                res.status(500).json({ 
+                  success: false, 
+                  message: "Erreur lors de la suppression" 
+                });
+              });
+            }
+            res.json({ 
+              success: true, 
+              message: "Utilisateur déplacé vers la corbeille" 
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// Route pour restaurer un utilisateur
+app.put("/api/users/:id/restore", (req, res) => {
+  const { id } = req.params;
+  
+  // Vérifier d'abord si l'utilisateur existe dans la corbeille
+  const checkQuery = "SELECT * FROM deleted_users WHERE id_etudiant = ?";
+  
+  db.query(checkQuery, [id], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Erreur lors de la vérification:", checkErr);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Erreur lors de la vérification de l'utilisateur" 
+      });
+    }
+
+    if (checkResults.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Utilisateur non trouvé dans la corbeille" 
+      });
+    }
+
+    const user = checkResults[0];
+
+    // Commencer la transaction
+    db.beginTransaction((err) => {
+      if (err) {
+        console.error("Erreur de transaction:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Erreur lors de la restauration" 
+        });
+      }
+
+      // 1. Réinsérer dans la table etudiant
+      const insertQuery = `
+        INSERT INTO etudiant (
+          id_etudiant, name, surname, email, password, 
+          phonenumber, university, faculty, speciality, 
+          id_role, email_activated, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
+      `;
+
+      const values = [
+        user.id_etudiant,
+        user.name,
+        user.surname,
+        user.email,
+        user.password,
+        user.phonenumber,
+        user.university,
+        user.faculty,
+        user.speciality,
+        user.id_role
+      ];
+
+      db.query(insertQuery, values, (insertErr) => {
+        if (insertErr) {
+          return db.rollback(() => {
+            console.error("Erreur d'insertion:", insertErr);
+            res.status(500).json({ 
+              success: false, 
+              message: "Erreur lors de la restauration" 
+            });
+          });
+        }
+
+        // 2. Supprimer de la table deleted_users
+        const deleteQuery = "DELETE FROM deleted_users WHERE id_etudiant = ?";
+        
+        db.query(deleteQuery, [id], (deleteErr) => {
+          if (deleteErr) {
+            return db.rollback(() => {
+              console.error("Erreur de suppression:", deleteErr);
+              res.status(500).json({ 
+                success: false, 
+                message: "Erreur lors de la restauration" 
+              });
+            });
+          }
+
+          // Valider la transaction
+          db.commit((commitErr) => {
+            if (commitErr) {
+              return db.rollback(() => {
+                console.error("Erreur de commit:", commitErr);
+                res.status(500).json({ 
+                  success: false, 
+                  message: "Erreur lors de la restauration" 
+                });
+              });
+            }
+            res.json({ 
+              success: true, 
+              message: "Utilisateur restauré avec succès" 
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// Route pour obtenir les utilisateurs supprimés
+app.get("/api/users/trash", (req, res) => {
+  const query = `
+    SELECT id_etudiant, name, surname, email, university, 
+           faculty, speciality, deleted_at 
+    FROM deleted_users
+  `;
+  
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Erreur lors de la récupération:", err);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Erreur lors de la récupération des utilisateurs supprimés" 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      users: results 
+    });
+  });
+});
 
 // Route pour la soumission des données
 app.post("/api/memoire", upload.single("file"), (req, res) => {
@@ -175,31 +518,6 @@ app.get("/api/dashboard", async (req, res) => {
   }
 });
 
-
-
-// app.post("/api/etudiant", async (req, res) => {
-//   const { name, surname, email, password } = req.body;
-
-//   if (!name || !surname || !email || !password) {
-//     return res.status(400).json({ message: "Tous les champs sont obligatoires." });
-//   }
-
-//   try {
-//     const hashedPassword = await bcrypt.hash(password, 10); // Hachage avec un salt de 10
-
-//     const query = `INSERT INTO etudiant(name, surname, email, password) VALUES(?, ?, ?, ?)`;
-//     db.query(query, [name, surname, email, hashedPassword], (err, result) => {
-//       if (err) {
-//         console.error("Erreur lors de l'insertion :", err);
-//         return res.status(500).json({ message: "Erreur interne du serveur." });
-//       }
-//       res.status(201).json({ message: "Inscription réussie !" });
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: "Erreur lors du hachage du mot de passe." });
-//   }
-// });
-
 app.post("/api/etudiant", async (req, res) => {
   const { name, surname, email, password } = req.body;
 
@@ -275,9 +593,6 @@ app.post("/api/etudiant/activate", (req, res) => {
   });
 });
 
-
-// app.post("/api/login", (req, res) => {
-//   const { email, password } = req.body;
 
 //   if (!email || !password) {
 //     return res.status(400).json({ message: "Email et mot de passe requis." });
