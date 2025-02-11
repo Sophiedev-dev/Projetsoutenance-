@@ -20,6 +20,7 @@ const Dashboard = () => {
     universite: '',
     description:'',
     file: null,
+    status : 'pending',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,6 +131,8 @@ const Dashboard = () => {
     formData.append('description', newMemoire.description);
     formData.append('file', newMemoire.file);
     formData.append('id_etudiant', user.user.id_etudiant);
+    formData.append('status', 'pending'); 
+
 
     console.log("formData");
     console.log(formData);

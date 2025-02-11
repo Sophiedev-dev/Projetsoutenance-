@@ -122,6 +122,61 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
   });
 });
 
+app.get("/api/admin", async (req, res) => {
+  try {
+    // Statistiques sur les mémoires
+    const [total] = await db.promise().query("SELECT COUNT(*) AS total FROM memoire");
+    const [validated] = await db.promise().query("SELECT COUNT(*) AS validated FROM memoire WHERE status = 'validated'");
+    const [rejected] = await db.promise().query("SELECT COUNT(*) AS rejected FROM memoire WHERE status = 'rejected'");
+    const [pending] = await db.promise().query("SELECT COUNT(*) AS pending FROM memoire WHERE status = 'pending'");
+
+    // Statistiques sur les utilisateurs
+    const [totalUsers] = await db.promise().query("SELECT COUNT(*) AS totalUsers FROM etudiant");
+    const [activeUsers] = await db.promise().query("SELECT COUNT(*) AS activeUsers FROM etudiant WHERE is_active = 1");
+
+    res.json({
+      total: total[0].total,
+      validated: validated[0].validated,
+      rejected: rejected[0].rejected,
+      pending: pending[0].pending,
+      totalUsers: totalUsers[0].totalUsers,
+      activeUsers: activeUsers[0].activeUsers
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des statistiques:", error);
+    res.status(500).json({ message: "Erreur lors de la récupération des statistiques." });
+  }
+});
+
+app.get("/api/dashboard", async (req, res) => {
+  try {
+    // Statistiques récentes sur les mémoires soumises
+    const [recentSubmissions] = await db.promise().query("SELECT * FROM memoire ORDER BY date_soumission DESC LIMIT 5");
+
+    // Top 3 des spécialités les plus populaires
+    const [topSpecialities] = await db.promise().query("SELECT speciality, COUNT(*) AS count FROM memoire GROUP BY speciality ORDER BY count DESC LIMIT 3");
+
+    // Statistiques sur les soumissions mensuelles
+    const [monthlySubmissions] = await db.promise().query(`
+      SELECT MONTH(date_soumission) AS month, COUNT(*) AS submissions
+      FROM memoire
+      GROUP BY MONTH(date_soumission)
+      ORDER BY month
+    `);
+
+    res.json({
+      recentSubmissions: recentSubmissions,
+      topSpecialities: topSpecialities,
+      monthlySubmissions: monthlySubmissions
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des statistiques du tableau de bord:", error);
+    res.status(500).json({ message: "Erreur lors de la récupération des statistiques du tableau de bord." });
+  }
+});
+
+
+
 // app.post("/api/etudiant", async (req, res) => {
 //   const { name, surname, email, password } = req.body;
 

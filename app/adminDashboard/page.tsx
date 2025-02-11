@@ -1,103 +1,81 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, FileText, Settings, ChevronDown, Book,Trash } from 'lucide-react';
+import { 
+  BarChart, Users, FileText, Settings, ChevronDown, Book, Trash, 
+  Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
+  PieChart, TrendingUp, UserCheck, Clock
+} from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
+
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [memoires, setMemoires] = useState([]);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedMemoire, setSelectedMemoire] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCycle, setFilterCycle] = useState('all');
+  // const [specialities, setSpecialities] = useState([]);
+  const [filterSpeciality, setFilterSpeciality] = useState('all');
   const [stats, setStats] = useState({
     total: 0,
     validated: 0,
     rejected: 0,
     pending: 0,
+    totalUsers: 0,
+    activeUsers: 0
   });
-  const [filter, setFilter] = useState('all');
 
-  const handleRejection = async (memoireId, p0: string) => {
-    const rejectionReason = prompt("Veuillez entrer la raison du rejet :");
-    if (!rejectionReason) return;
-  
+  // Nouvelles statistiques pour le tableau de bord
+  const [dashboardStats, setDashboardStats] = useState({
+    recentSubmissions: [],
+    topSpecialities: [],
+    monthlySubmissions: []
+  });
+
+  useEffect(() => {
+    fetchMemoires();
+    fetchStats();
+    fetchDashboardStats();
+  }, []);
+
+  const fetchStats = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/reject/${memoireId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rejection_reason: rejectionReason }), // Envoi de la raison du rejet
+      const response = await fetch('http://localhost:5000/api/admin');
+      const data = await response.json();
+      setStats({
+        total: data.total,
+        validated: data.validated,
+        rejected: data.rejected,
+        pending: data.pending,
+        totalUsers: data.totalUsers,
+        activeUsers: data.activeUsers
       });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors du rejet du mémoire.');
-      }
-  
-      toast.success('Le mémoire a été rejeté avec succès.');
-      fetchMemoires();
     } catch (error) {
-      console.error("Erreur lors du rejet du mémoire :", error);
-      toast.error(error.message || 'Erreur lors du rejet du mémoire.');
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      toast.error('Erreur lors de la récupération des statistiques');
     }
   };
   
-
-  const renderRejectionModal = () => {
-    if (!selectedMemoire) return null;
-
-    return (
-      <div className="modal">
-        <div className="modal-content">
-          <h2>Raison du rejet</h2>
-          <textarea
-            value={rejectionReason}
-            onChange={(e) => setRejectionReason(e.target.value)}
-            placeholder="Entrez la raison du rejet ici..."
-            rows="4"
-            className="textarea"
-          />
-          {/* <button
-            onClick={() => handleRejection(selectedMemoire.id_memoire)}
-            className="btn btn-danger"
-          >
-            Rejeter
-          </button> */}
-          <button
-            onClick={() => setSelectedMemoire(null)}
-            className="btn btn-secondary"
-          >
-            Annuler
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-
-  const handleDeleteMemoire = async (memoireId) => {
+  const fetchDashboardStats = async () => {
     try {
-        // Confirmer la suppression
-        const confirmation = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
-        if (!confirmation) return;
-
-        const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
-            method: 'DELETE',
-        });
-
-        if (!response.ok) {
-            throw new Error('Erreur lors de la suppression du mémoire.');
-        }
-
-        toast.success('Le mémoire a été supprimé avec succès.');
-        fetchMemoires(); // Rafraîchir la liste des mémoires
+      const response = await fetch('http://localhost:5000/api/dashboard');
+      const data = await response.json();
+      console.log("API Response:", data);
+      setDashboardStats({
+        recentSubmissions: data.recentSubmissions || [],
+        topSpecialities: data.topSpecialities || [],
+        monthlySubmissions: data.monthlySubmissions || []
+      });
     } catch (error) {
-        console.error('Erreur lors de la suppression du mémoire:', error);
-        toast.error('Erreur lors de la suppression du mémoire.');
+      console.error('Erreur lors de la récupération des statistiques du tableau de bord:', error);
+      toast.error('Erreur lors de la récupération des statistiques du tableau de bord');
     }
-};
-
-
+  };
+  
+  
 
   const fetchMemoires = async () => {
     try {
@@ -109,211 +87,444 @@ const AdminDashboard = () => {
       if (Array.isArray(data.memoire)) {
         setMemoires(data.memoire);
       } else {
-        console.error('La réponse n\'est pas un tableau dans data.memoire:', data);
+        console.error('La réponse n\'est pas un tableau:', data);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des mémoires', error);
-      toast.error('Erreur lors de la récupération des mémoires. Veuillez réessayer plus tard.');
+      toast.error('Erreur lors de la récupération des mémoires');
     }
   };
 
-  useEffect(() => {
-    fetchMemoires();
-  }, []);
+  const handleRejection = async (memoireId) => {
+    if (!rejectionReason) {
+      toast.error('Veuillez fournir une raison du rejet');
+      return;
+    }
 
-  const handleMemoireAction = async (memoireId, action) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action }),
+      const response = await fetch(`http://localhost:5000/api/memoire/reject/${memoireId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rejection_reason: rejectionReason }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la mise à jour du mémoire.');
+        throw new Error('Erreur lors du rejet du mémoire');
       }
 
-      const responseData = await response.json();
-
-      if (action === 'validated') {
-        toast.success('Le mémoire a été validé avec succès !');
-      } else if (action === 'rejected') {
-        toast.error('Le mémoire a été rejeté !');
-      }
-
+      toast.success('Mémoire rejeté avec succès');
+      setRejectionReason('');
+      setSelectedMemoire(null);
       fetchMemoires();
+      fetchStats();
     } catch (error) {
-      console.error("Erreur lors de l'action sur le mémoire :", error.message);
-      toast.error("Une erreur est survenue, veuillez réessayer.");
+      console.error('Erreur:', error);
+      toast.error(error.message);
     }
   };
 
-  const filteredMemoires = filter === 'all' 
-  ? memoires 
-  : memoires.filter(memoire => memoire.status === filter);
+  const handleDeleteMemoire = async (memoireId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?')) {
+      return;
+    }
 
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression');
+      }
+
+      toast.success('Mémoire supprimé avec succès');
+      fetchMemoires();
+      fetchStats();
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const handleValidation = async (memoireId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'validated' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la validation');
+      }
+
+      toast.success('Mémoire validé avec succès');
+      fetchMemoires();
+      fetchStats();
+    } catch (error) {
+      console.error('Erreur:', error);
+      toast.error('Erreur lors de la validation');
+    }
+  };
+
+//   useEffect(() => {
+//     if (topSpecialities) {
+//         const formatted = topSpecialities.map(s => ({
+//             speciality: s.speciality ?? "Non spécifié",
+//             count: s.count
+//         }));
+//         setSpecialities(formatted);
+//     }
+// }, [topSpecialities]);
+
+  const renderDashboard = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Cartes de statistiques */}
+      {[
+      { id: "total-memoires", title: "Total Mémoires", value: stats.total, icon: <FileText className="h-8 w-8 text-blue-500" /> },
+      { id: "valides", title: "Validés", value: stats.validated, icon: <CheckCircle className="h-8 w-8 text-green-500" /> },
+      { id: "en-attente", title: "En attente", value: stats.pending, icon: <Clock className="h-8 w-8 text-yellow-500" /> },
+      { id: "rejetes", title: "Rejetés", value: stats.rejected, icon: <XCircle className="h-8 w-8 text-red-500" /> },
+    ].map((stat) => (
+      <div key={stat.id} className="bg-white shadow-md rounded-lg p-4 flex items-center">
+        {stat.icon}
+        <div className="ml-4">
+          <p className="text-lg font-semibold">{stat.title}</p>
+          <p className="text-xl">{stat.value}</p>
+        </div>
+      </div>
+    ))}
+      
+      {/* Tableau des soumissions récentes */}
+      <div className="col-span-full lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+        <h3 className="text-lg font-semibold mb-4">Soumissions récentes</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Titre</th>
+                <th className="text-left py-2">Date</th>
+                <th className="text-left py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboardStats.recentSubmissions && Array.isArray(dashboardStats.recentSubmissions) &&
+                dashboardStats.recentSubmissions.map((memoire) => (
+                  <tr key={memoire.id_memoire} className="border-b">
+                    <td className="py-2">{memoire.libelle}</td>
+                    <td className="py-2">{new Date(memoire.date_soumission).toLocaleDateString()}</td>
+                    <td className="py-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${memoire.status === 'validé' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {memoire.status === 'validé' ? 'Validé' : 'En attente'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+  
+         {/* Graphiques des spécialités les plus actives */}
+    <div className="col-span-full lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+      <h3 className="text-lg font-semibold mb-4">Graphiques des spécialités les plus actives</h3>
+      <div className="space-y-4">
+        {dashboardStats.topSpecialities && dashboardStats.topSpecialities.length > 0 ? (
+          dashboardStats.topSpecialities.map((speciality, index) => (
+            <div key={`${speciality.name || 'no-name'}-${index}`} className="flex items-center justify-between">
+              <span>{speciality.name || 'Aucune spécialité'}</span>
+              <div className="flex items-center">
+                <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
+                  <div
+                    className="bg-blue-500 rounded-full h-2"
+                    style={{ width: `${(speciality.count / Math.max(...dashboardStats.topSpecialities.map(s => s.count))) * 100}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600">{speciality.count}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-gray-500">
+            Aucune spécialité disponible
+          </div>
+        )}
+      </div>
+    </div>
+    </div>
+  );
+  
+  // Le StatCard reste inchangé
+  const StatCard = ({ title, value, icon, color }) => (
+    <div className={`bg-white rounded-xl shadow-md p-6 border-l-4 border-${color}-500`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-2xl font-bold mt-1">{value}</p>
+        </div>
+        {icon}
+      </div>
+    </div>
+  );
+  
 
   const renderMemoires = () => {
+    const filteredMemoires = memoires.filter(memoire => {
+      const matchesSearch = memoire.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          memoire.etudiant_nom?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCycle = filterCycle === 'all' || memoire.cycle === filterCycle;
+      const matchesSpeciality = filterSpeciality === 'all' || memoire.speciality === filterSpeciality;
+      return matchesSearch && matchesCycle && matchesSpeciality;
+    });
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl shadow-lg p-6 backdrop-blur-lg bg-white/90"
+        className="bg-white rounded-2xl shadow-lg p-6"
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Mémoires soumis
-          </h2>
+        {/* Filtres et recherche */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
           <select
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-4 py-2 rounded-lg bg-white border-2 border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none text-gray-700 font-medium shadow-sm"
+            value={filterCycle}
+            onChange={(e) => setFilterCycle(e.target.value)}
+            className="rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
           >
-            <option value="all">Tous les statuts</option>
-            <option value="pending">En attente</option>
-            <option value="validated">Validés</option>
-            <option value="rejected">Rejetés</option>
+            <option value="all">Tous les cycles</option>
+            <option value="Bachelor">Licence</option>
+            <option value="Master">Master</option>
+            <option value="Phd">Doctorat</option>
           </select>
+          <select
+            value={filterSpeciality}
+            onChange={(e) => setFilterSpeciality(e.target.value)}
+            className="rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="all">Toutes les spécialités</option>
+            <option value="Securiter">Securiter</option>
+            <option value="GL">Génie Logiciel</option>
+            <option value="Réseaux">Réseaux</option>
+          </select>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setFilterCycle('all');
+              setFilterSpeciality('all');
+            }}
+            className="flex items-center justify-center px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Filter size={20} className="mr-2" />
+            Réinitialiser les filtres
+          </button>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-100">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Etudiant</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Libellé</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Université</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Description</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Visualiser</th>
-                <th className="px-6 py-4 text-center text-sm font-semibold text-gray-600">Actions</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Surpprimer</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredMemoires.map((memoire, index) => (
-                <motion.tr
-                  key={memoire.id || `${memoire.libelle}-${index}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="hover:bg-gray-50/80 transition-colors duration-200"
-                >
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                     {memoire.etudiant_nom || 'Non disponible'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-800 font-medium">{memoire.libelle}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{memoire.university}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{memoire.description}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600">
-                      {memoire.cycle}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600">
-                      {memoire.speciality}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                      <button
-                        onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
-                        className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
-                      >
-                        Visualiser
-                      </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleMemoireAction(memoire.id_memoire, 'validated')}
-                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
-                      >
-                        Valider
-                      </button>
-                      <button
-                        onClick={() => handleRejection(memoire.id_memoire, 'rejected')}
-                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
-                      >
-                        Rejeter
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                      <button
-                         onClick={() => handleDeleteMemoire(memoire.id_memoire)}
-                         className="px-3 py-1.5 text-sm text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-200"
-                         >
-                         <Trash size={16} />
-                      </button>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-          {renderRejectionModal()}
+        {/* Tableau des mémoires */}
+        <div className="overflow-x-auto">
+  <table className="w-full">
+    <thead>
+      <tr className="bg-gray-50">
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Étudiant</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Titre</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-gray-100">
+  {filteredMemoires.map((memoire) => (
+    <tr key={memoire.id_memoire} className="hover:bg-gray-50">
+      <td className="px-6 py-4">{memoire.etudiant_nom}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <span className="font-medium">{memoire.libelle}</span>
         </div>
+      </td>
+      <td className="px-6 py-4">
+        <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+          {memoire.cycle}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+          {memoire.speciality}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <StatusBadge status={memoire.status} />
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Visualiser"
+          >
+            <Download size={20} />
+          </button>
+          {memoire.status === 'pending' && (
+            <>
+              <button
+                onClick={() => handleValidation(memoire.id_memoire)}
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                title="Valider"
+              >
+                <CheckCircle size={20} style={{ border: '1px solid red' }} />
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedMemoire(memoire);
+                  setRejectionReason('');
+                }}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Rejeter"
+              >
+                <XCircle size={20} />
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Supprimer"
+          >
+            <Trash size={20} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  ))}
+    </tbody>
+
+  </table>
+</div>
+
+
+        {/* Modal de rejet */}
+        {selectedMemoire && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-4">Rejeter le mémoire</h3>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Raison du rejet..."
+                className="w-full h-32 p-2 border rounded-lg mb-4"
+              />
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => setSelectedMemoire(null)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleRejection(selectedMemoire.id_memoire)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  Rejeter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     );
   };
 
+  const StatusBadge = ({ status }) => {
+    const statusConfig = {
+      pending: { color: 'yellow', text: 'En attente' },
+      validated: { color: 'green', text: 'Validé' },
+      rejected: { color: 'red', text: 'Rejeté' }
+    };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return renderMemoires();
-      case 'add':
-        return <p>Formulaire d'ajout de mémoires ici.</p>;
-      default:
-        return null;
-    }
+    const config = statusConfig[status] || statusConfig.pending;
+
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium bg-${config.color}-50 text-${config.color}-700`}>
+        {config.text}
+      </span>
+    );
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
       <motion.div
         initial={{ x: -250 }}
         animate={{ x: 0 }}
         className="w-64 bg-white shadow-lg"
       >
         <div className="p-6">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-8">
-            Admin Panel
+          <h1 className="text-2xl font-bold text-gray-800 mb-8">
+            Administration
           </h1>
           <nav className="space-y-2">
-            {[
-              { name: 'dashboard', icon: <BarChart size={20} />, label: 'Tableau de Bord' },
-              { name: 'users', icon: <Book size={20} />, label: 'Utilisateurs', path: '/login',  },
-              { name: 'settings', icon: <Settings size={20} />, label: 'Paramètres' },
-            ].map((item) => (
-              <button
-                key={item.name}
-                onClick={() => setActiveTab(item.name)}
-                className={`flex items-center w-full p-3 rounded-xl transition-all duration-200 ${
-                  activeTab === item.name
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {item.icon}
-                <span className="ml-3 font-medium">{item.label}</span>
-              </button>
-            ))}
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === 'dashboard'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <BarChart size={20} className="mr-3" />
+              Tableau de bord
+            </button>
+            <button
+              onClick={() => setActiveTab('memoires')}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === 'memoires'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <FileText size={20} className="mr-3" />
+              Mémoires
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Settings size={20} className="mr-3" />
+              Paramètres
+            </button>
           </nav>
         </div>
       </motion.div>
 
+      {/* Main content */}
       <div className="flex-1 p-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          {renderContent()}
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'memoires' && renderMemoires()}
+          {activeTab === 'settings' && (
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">Paramètres</h2>
+              <p>Configuration du système...</p>
+            </div>
+          )}
         </motion.div>
       </div>
       <ToastContainer />
