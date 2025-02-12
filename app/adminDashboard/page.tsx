@@ -125,23 +125,14 @@ const AdminDashboard = () => {
     try {
       const storedUser = localStorage.getItem('user');
       const user = storedUser ? JSON.parse(storedUser) : null;
-      if (action === 'signed') {
-        
+     
+      
         const signer = "Le Prof"+" "+user.user.name; 
-        const response = await fetch(`http://localhost:5000/api/sign/${memoireId}`, {
+        const respons = await fetch(`http://localhost:5000/api/sign/${memoireId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signer }),
         });
-        
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || 'Erreur de signature');
-        }
-
-        toast.success(result.message || 'Document signé avec succès !');
-      } else{
 
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
         method: 'PATCH',
@@ -151,7 +142,7 @@ const AdminDashboard = () => {
         body: JSON.stringify({ action }),
       });
 
-      if (!response.ok) {
+      if (!response.ok  || !respons.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la mise à jour du mémoire.');
       }
@@ -159,13 +150,13 @@ const AdminDashboard = () => {
       const responseData = await response.json();
 
       if (action === 'validated') {
-        toast.success('Le mémoire a été validé avec succès !');
+        toast.success('Le mémoire a été validé et signer avec succès !');
       } else if (action === 'rejected') {
         toast.error('Le mémoire a été rejeté !');
       }else if (action === 'signed') {
         toast.error('Le mémoire a été signé !');
       }
-    }
+    
       fetchMemoires();
     } catch (error) {
       console.error("Erreur lors de l'action sur le mémoire :", error.message);
@@ -196,7 +187,7 @@ const AdminDashboard = () => {
           >
             <option value="all">Tous les statuts</option>
             <option value="pending">En attente</option>
-            <option value="validated">Validés</option>
+            <option value="validated">Validés et signer</option>
             <option value="rejected">Rejetés</option>
           </select>
         </div>
@@ -257,13 +248,7 @@ const AdminDashboard = () => {
                       >
                         Valider
                       </button>
-                      <button
-                        onClick={() => handleMemoireAction(memoire.id_memoire, 'signed')}
-                        className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
-                      >
-                        Signer
-                      </button>
-                      <button
+                       <button
                         onClick={() => handleRejection(memoire.id_memoire, 'rejected')}
                         className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-red-500 rounded-lg hover:shadow-lg hover:translate-y-[-1px] transition-all duration-200"
                       >

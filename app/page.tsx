@@ -26,7 +26,7 @@ const Homepage = () => {
   const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
     search = search || ""; 
     try {
-        let url = `http://localhost:5000/api/memoire?status=${status}`;
+        let url = `http://localhost:5000/api/memoires?status=${status}`;
         if (cycle) url += `&cycle=${cycle}`;
         if (typeof search === "string" && search.trim() !== "") {
             url += `&search=${encodeURIComponent(search.toLowerCase())}`;
@@ -62,6 +62,7 @@ const Homepage = () => {
             });
 
             setMemoires(filteredMemoires);
+            console.log(data);
         } else {
             console.error("Format inattendu des données reçues :", data);
         }
@@ -270,7 +271,7 @@ useEffect(() => {
               </div>
               <div className="w-full h-full">
                 <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-                  <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
+                  <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.signed_path}`} plugins={[defaultLayoutPluginInstance]} />
                 </Worker>
               </div>
             </div>

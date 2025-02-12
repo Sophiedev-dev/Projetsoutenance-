@@ -173,7 +173,7 @@ app.post('/api/sign/:id', async (req, res) => {
     // Sauvegarder le nouveau PDF
     const signedBytes = await pdfDoc.save();
     const signedFileName = `signed_${path.basename(originalPath)}`;
-    const signedPath = path.join('uploads', signedFileName);
+    const signedPath = path.join('uploads',signedFileName );
     await fs.promises.writeFile(signedPath, signedBytes);
 
     // Mettre à jour la base de données
@@ -196,7 +196,7 @@ app.post('/api/sign/:id', async (req, res) => {
 });
 
 
-app.post("/api/login", (req, res) => {
+/*app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -253,8 +253,8 @@ app.post("/api/login", (req, res) => {
       console.error("Erreur lors de la connexion :", err);
       return res.status(500).json({ message: "Erreur interne du serveur." });
     });
-});
-/*app.post("/api/login", (req, res) => {
+});*/
+  app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
   // Validation des entrées
@@ -312,7 +312,7 @@ app.post("/api/login", (req, res) => {
       console.error("Erreur lors de la connexion :", err);
       return res.status(500).json({ message: "Erreur interne du serveur." });
     });
-});*/
+}); 
 
 
 
@@ -369,13 +369,14 @@ app.get("/api/memoireEtudiant", (req, res) => {
 
 
 // Récupérer tous les mémoires avec les informations de l'étudiant
-app.get("/api/memoire", (req, res) => {
+app.get("/api/memoires", (req, res) => {
   const { status } = req.query; // Filtre sur le statut (validé, rejeté, etc.)
 
   let query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom,k.signed_path
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
+     JOIN signed_documents k ON m.id_memoire = k.memoire_id
   `;
   
   const queryParams = [];
@@ -513,9 +514,10 @@ app.get("/api/memoire", (req, res) => {
 
   // Construire la requête avec un filtre conditionnel pour 'status'
   let query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description
     FROM memoire m
-    JOIN etudiant e ON m.id_etudiant = e.id_etudiant
+   
+    
   `;
 
   const queryParams = [];
