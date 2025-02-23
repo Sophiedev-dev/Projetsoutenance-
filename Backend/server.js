@@ -5,7 +5,9 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto"); 
 const nodemailer = require("nodemailer");
+const { signDocument } = require('./utils/crypto');
 
 const transporter = nodemailer.createTransport({
   service: "gmail", // Ou autre service (Yahoo, Outlook, etc.)
@@ -25,7 +27,10 @@ const dbConfig = {
 };
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // URL de votre frontend
+  credentials: true
+}));
 app.use(express.json());
 
 // Configuration de MySQL
@@ -64,8 +69,9 @@ const upload = multer({
 });
 
 // Crée le dossier des fichiers si nécessaire
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads", { recursive: true });
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Route pour récupérer tous les utilisateurs
@@ -593,83 +599,47 @@ app.post("/api/etudiant/activate", (req, res) => {
   });
 });
 
-
-//   if (!email || !password) {
-//     return res.status(400).json({ message: "Email et mot de passe requis." });
-//   }
-
-//   const executeQuery = (query, params, role) => {
-//     return new Promise((resolve, reject) => {
-//       db.query(query, params, async (err, results) => {
-//         if (err) return reject(err);
-
-//         if (results.length > 0) {
-//           const user = results[0];
-//           const isValid = await bcrypt.compare(password, user.password); // Comparer les mots de passe
-
-//           if (isValid) {
-//             delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
-//             resolve({ role, user });
-//           } else {
-//             resolve(null);
-//           }
-//         } else {
-//           resolve(null);
-//         }
-//       });
-//     });
-//   };
-
-//   const adminQuery = "SELECT * FROM admin WHERE email = ?";
-//   const studentQuery = "SELECT * FROM etudiant WHERE email = ?";
-
-//   Promise.all([
-//     executeQuery(adminQuery, [email], "admin"),
-//     executeQuery(studentQuery, [email], "etudiant"),
-//   ])
-//     .then(([adminResult, studentResult]) => {
-//       if (adminResult) {
-//         return res.status(200).json({
-//           message: "Connexion administrateur réussie.",
-//           role: adminResult.role,
-//           user: adminResult.user,
-//         });
-//       }
-//       if (studentResult) {
-        
-//         return res.status(200).json({
-//           message: "Connexion réussie.",
-//           role: studentResult.role,
-//           user: studentResult.user,
-//         });
-//       }
-//       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
-//     })
-//     .catch((err) => {
-//       console.error("Erreur lors de la connexion :", err);
-//       return res.status(500).json({ message: "Erreur interne du serveur." });
-//     });
-// });
-const executeQuery = (query, params, role) => {
+const executeQuery = (query, params, type) => {
   return new Promise((resolve, reject) => {
-    db.query(query, params, async (err, results) => {
-      if (err) return reject(err);
+    db.query(query, [params[0]], async (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
 
-      if (results.length > 0) {
-        const user = results[0];
-        const isValid = await bcrypt.compare(params[1], user.password); // Comparer les mots de passe
-
-        if (isValid) {
-          if (role === "etudiant" && !user.email_activated) {
-            return resolve({ notActivated: true });
-          }
-          delete user.password; // Supprimer le mot de passe avant d'envoyer la réponse
-          resolve({ role, user });
-        } else {
-          resolve(null);
-        }
-      } else {
+      if (results.length === 0) {
         resolve(null);
+        return;
+      }
+
+      const user = results[0];
+      const validPassword = await bcrypt.compare(params[1], user.password);
+
+      if (!validPassword) {
+        resolve(null);
+        return;
+      }
+
+      if (type === "admin") {
+        resolve({
+          role: "admin",
+          user: {
+            id_admin: user.id_admin,
+            name: user.name,
+            email: user.email
+          }
+        });
+      } else {
+        // Pour les étudiants, on utilise user au lieu de etudiant
+        resolve({
+          role: "etudiant",
+          user: {
+            id_etudiant: user.id_etudiant, // Utiliser user au lieu de etudiant
+            name: user.name,
+            email: user.email
+          },
+          notActivated: !user.email_activated
+        });
       }
     });
   });
@@ -701,10 +671,12 @@ app.post("/api/login", (req, res) => {
         if (studentResult.notActivated) {
           return res.status(403).json({ message: "Veuillez activer votre compte avant de vous connecter." });
         }
+        // S'assurer que l'ID est bien inclus dans la réponse
+        console.log('Données étudiant:', studentResult); // Pour déboguer
         return res.status(200).json({
-          message: "Connexion réussie.",
+          message: "Connexion réussie",
           role: studentResult.role,
-          user: studentResult.user,
+          user: studentResult.user // Contient maintenant id_etudiant, name et email
         });
       }
       return res.status(401).json({ message: "Email ou mot de passe incorrect." });
@@ -715,37 +687,67 @@ app.post("/api/login", (req, res) => {
     });
 });
 
-app.get("/uploads/:filename", (req, res) => {
+app.get("/uploads/:filename", async (req, res) => {
   const fileName = req.params.filename;
   const filePath = path.join(__dirname, "uploads", fileName);
 
-  console.log("Téléchargement demandé pour le fichier :", filePath);
+  console.log("Requête pour le fichier :", filePath);
 
-  fs.exists(filePath, (exists) => {
-    if (exists) {
-      res.sendFile(filePath);
-    } else {
-      console.error("Fichier non trouvé :", filePath);
-      res.status(404).json({ message: "Fichier non trouvé." });
-    }
-  });
+  try {
+    // Vérifie si le fichier existe
+    await fs.promises.access(filePath);
+
+    // Définit les en-têtes appropriés
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    res.setHeader("Access-Control-Allow-Origin", "*"); // Permet l'accès depuis le frontend
+
+    // Stream du fichier
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (error) {
+    console.error("Fichier non trouvé :", filePath);
+    res.status(404).json({ message: "Fichier non trouvé", filePath });
+  }
+});
+
+
+app.get("/api/check-file/:filename", async (req, res) => {
+  const fileName = req.params.filename;
+  const filePath = path.join(__dirname, "uploads", fileName);
+
+  try {
+    const exists = await fs.promises.access(filePath)
+      .then(() => true)
+      .catch(() => false);
+
+    res.json({ 
+      exists, 
+      filePath,
+      url: exists ? `/uploads/${fileName}` : null 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      exists: false, 
+      error: error.message 
+    });
+  }
 });
 
 app.get("/api/memoireEtudiant", (req, res) => {
   const { id_etudiant } = req.query;
+  console.log("ID étudiant reçu:", id_etudiant);
 
   if (!id_etudiant) {
     return res.status(400).json({ message: "ID étudiant requis." });
   }
 
   const query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.description, m.file_name, m.file_path, e.name AS etudiant_nom
+    SELECT m.*, e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
     WHERE m.id_etudiant = ?
   `;
-
-  console.log("Exécution de la requête :", query); // Log de la requête
 
   db.query(query, [id_etudiant], (err, results) => {
     if (err) {
@@ -753,12 +755,8 @@ app.get("/api/memoireEtudiant", (req, res) => {
       return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
     }
 
-    if (Array.isArray(results)) {
-      res.status(200).json({ memoire: results });
-    } else {
-      console.error("Erreur : la réponse n'est pas un tableau", results);
-      res.status(500).json({ message: "Erreur interne serveur, réponse incorrecte." });
-    }
+    // Renvoyer directement le tableau de résultats
+    res.status(200).json(results);
   });
 });
 
@@ -767,16 +765,18 @@ app.get("/api/memoire", (req, res) => {
   const { status } = req.query; // Filtre sur le statut (validé, rejeté, etc.)
 
   let query = `
-    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, m.file_name, m.file_path, m.status, m.description, e.name AS etudiant_nom
+    SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, 
+           m.file_name, m.file_path, m.status, m.description, m.file_status,
+           e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
-  `;
+    WHERE m.file_status = 'available'`; // Ne récupérer que les fichiers disponibles
   
   const queryParams = [];
-  
-  // Si un status est fourni, ajoutez un filtre dans la requête
+
+  // Ajout d'un filtre optionnel sur le status
   if (status) {
-    query += ` WHERE m.status = ?`; 
+    query += ` AND m.status = ?`; 
     queryParams.push(status);
   }
 
@@ -788,111 +788,250 @@ app.get("/api/memoire", (req, res) => {
       return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
     }
 
+    const filteredResults = results.filter((memoire) => {
+      const filePath = path.join(__dirname, "uploads", memoire.file_name);
+      return fs.existsSync(filePath); // Ne renvoyer que les fichiers existants
+    });
+
     res.status(200).json({ memoire: results });
   });
 });
 
-app.put("/api/memoire/:id/valider", (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
 
-  if (!status) {
-    return res.status(400).json({ message: "Le statut est requis." });
-  }
-
-  // Mise à jour du statut du mémoire
-  const updateQuery = "UPDATE memoire SET status = ? WHERE id_memoire = ?";
-  db.query(updateQuery, [status, id], (err, result) => {
-    if (err) {
-      console.error("Erreur lors de la mise à jour du mémoire :", err);
-      return res.status(500).json({ message: "Erreur interne du serveur." });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Mémoire non trouvé." });
-    }
-
-    // Récupérer l'email de l'étudiant concerné
-    const getEmailQuery = `
-      SELECT e.email, e.name, m.libelle 
-      FROM memoire m 
-      JOIN etudiant e ON m.id_etudiant = e.id_etudiant 
-      WHERE m.id_memoire = ?
-    `;
-
-    db.query(getEmailQuery, [id], async (err, results) => {
-      if (err) {
-        console.error("Erreur lors de la récupération des informations de l'étudiant :", err);
-        return res.status(500).json({ message: "Erreur interne du serveur." });
+// Fonction pour générer une paire de clés
+const generateSignature = (data) => {
+  try {
+    // Générer une paire de clés
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem'
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem'
       }
-
-      if (results.length === 0) {
-        return res.status(404).json({ message: "Étudiant non trouvé." });
-      }
-
-      const { email, name, libelle } = results[0];
-
-      // Préparer et envoyer l'email
-      const subject = `Validation de votre mémoire`;
-      const text = `Bonjour ${name},\n\nVotre mémoire "${libelle}" a été ${status}.\nMerci !`;
-      const html = `<p>Bonjour <strong>${name}</strong>,</p>
-                    <p>Votre mémoire "<strong>${libelle}</strong>" a été <strong>${status}</strong>.</p>
-                    <p>Merci !</p>`;
-
-      const emailResult = await sendEmail(email, subject, text, html);
-
-      if (!emailResult.success) {
-        return res.status(500).json({ message: "Mémoire validé, mais erreur lors de l'envoi de l'email." });
-      }
-
-      res.status(200).json({ message: `Mémoire ${status} et notification envoyée à ${email}.` });
     });
-  });
+
+    // Créer la signature
+    const sign = crypto.createSign('SHA256');
+    sign.write(data);
+    sign.end();
+    const signature = sign.sign(privateKey, 'base64');
+
+    return {
+      signature,
+      publicKey
+    };
+  } catch (error) {
+    console.error('Erreur lors de la génération de la signature:', error);
+    throw new Error('Erreur lors de la génération de la signature');
+  }
+};
+
+// Route pour générer et stocker les clés pour un admin
+app.post("/api/admin/generate-keys", async (req, res) => {
+  const { id_admin } = req.body;
+
+  try {
+    // Générer une nouvelle paire de clés
+    const { publicKey, privateKey } = generateKeyPair();
+
+    // Mettre à jour l'admin avec les nouvelles clés
+    await db.promise().query(
+      "UPDATE admin SET public_key = ?, private_key = ? WHERE id_admin = ?",
+      [publicKey, privateKey, id_admin]
+    );
+
+    res.json({ message: "Clés générées et stockées avec succès" });
+  } catch (error) {
+    console.error("Erreur lors de la génération des clés:", error);
+    res.status(500).json({ message: "Erreur lors de la génération des clés" });
+  }
 });
 
 
-app.delete("/api/memoire/:id", (req, res) => {
-  const { id } = req.params; // ID du mémoire à supprimer
+app.put("/api/memoire/:id/valider", async (req, res) => {
+  console.log('Route de validation appelée');
+  console.log('Params:', req.params);
+  console.log('Body:', req.body);
 
-  // Étape 1 : Récupérer le chemin du fichier à supprimer
-  const query = "SELECT file_path FROM memoire WHERE id_memoire = ?";
-  db.query(query, [id], (err, result) => {
-    if (err) {
-      console.error("Erreur lors de la récupération du chemin du fichier :", err);
-      return res.status(500).json({ message: "Erreur interne du serveur." });
+  const { id } = req.params;
+  const { status, id_admin } = req.body;
+
+  if (!status || !id_admin) {
+    return res.status(400).json({ message: "Le statut et l'ID admin sont requis." });
+  }
+
+  try {
+    // Récupérer les informations du mémoire et de l'étudiant
+    const [results] = await db.promise().query(`
+      SELECT e.email, e.name, m.* 
+      FROM memoire m 
+      JOIN etudiant e ON m.id_etudiant = e.id_etudiant 
+      WHERE m.id_memoire = ?
+    `, [id]);
+
+    if (results.length === 0) {
+      throw new Error("Mémoire ou étudiant non trouvé");
     }
 
-    if (result.length === 0) {
+    const { email, name, libelle } = results[0];
+    console.log('Informations récupérées:', { email, name, libelle });
+
+    if (status === 'validated') {
+      try {
+        // Vérifier si une signature existe déjà
+        const [existingSignature] = await db.promise().query(
+          'SELECT * FROM digital_signatures WHERE id_memoire = ?',
+          [id]
+        );
+
+        if (existingSignature.length === 0) {
+          const dataToSign = JSON.stringify({
+            id_memoire: id,
+            libelle: libelle,
+            etudiant_id: results[0].id_etudiant,
+            date_validation: new Date().toISOString()
+          });
+
+          const { signature, publicKey } = generateSignature(dataToSign);
+
+          // Sauvegarder la signature
+          await db.promise().query(
+            `INSERT INTO digital_signatures 
+             (id_memoire, id_admin, signature, public_key, signed_at)
+             VALUES (?, ?, ?, ?, NOW())`,
+            [id, id_admin, signature, publicKey]
+          );
+        }
+
+        // Mise à jour du statut
+        await db.promise().query(
+          "UPDATE memoire SET status = ?, validated_by = ? WHERE id_memoire = ?",
+          [status, id_admin, id]
+        );
+
+        // Récupérer les détails de l'admin pour l'email
+        const [adminDetails] = await db.promise().query(
+          "SELECT name FROM admin WHERE id_admin = ?",
+          [id_admin]
+        );
+
+        // Préparer l'email
+        const subject = `Validation de votre mémoire`;
+        const text = `Bonjour ${name},\n\n
+          Votre mémoire "${libelle}" a été validé par ${adminDetails[0].name}.\n
+          Date de validation: ${new Date().toLocaleDateString()}.\n\n
+          Félicitations !\n
+          Cordialement,`;
+
+        const html = `
+          <p>Bonjour <strong>${name}</strong>,</p>
+          <p>Votre mémoire "<strong>${libelle}</strong>" a été validé.</p>
+          <p><strong>Validé par:</strong> ${adminDetails[0].name}</p>
+          <p><strong>Date de validation:</strong> ${new Date().toLocaleDateString()}</p>
+          <p>Félicitations !</p>
+          <p>Cordialement,</p>`;
+
+        console.log('Tentative d\'envoi d\'email à:', email);
+
+        // Envoi de l'email
+        const emailResult = await sendEmail(email, subject, text, html);
+        console.log('Résultat de l\'envoi d\'email:', emailResult);
+
+        if (!emailResult.success) {
+          console.error('Erreur lors de l\'envoi de l\'email:', emailResult.error);
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: `Mémoire validé${emailResult.success ? ' et notification envoyée' : ''} à ${email}`,
+          emailSent: emailResult.success
+        });
+
+      } catch (error) {
+        console.error('Erreur lors de la validation:', error);
+        throw new Error('Erreur lors de la validation du mémoire');
+      }
+    }
+
+  } catch (error) {
+    console.error("Erreur lors de la validation:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors de la validation du mémoire",
+      error: error.message
+    });
+  }
+});
+
+
+app.delete("/api/memoire/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Étape 1 : Récupérer le chemin du fichier
+    const [fileResult] = await db.promise().query(
+      "SELECT file_path FROM memoire WHERE id_memoire = ?",
+      [id]
+    );
+
+    if (fileResult.length === 0) {
       return res.status(404).json({ message: "Mémoire non trouvé." });
     }
 
-    const filePath = result[0].file_path;
+    const filePath = fileResult[0].file_path;
+    console.log("Chemin du fichier récupéré :", filePath);
 
-    // Étape 2 : Supprimer le fichier physique du serveur
-    fs.unlink(filePath, (unlinkErr) => {
-      if (unlinkErr) {
+    // Étape 2 : Supprimer les signatures associées
+    await db.promise().query(
+      "DELETE FROM digital_signatures WHERE id_memoire = ?",
+      [id]
+    );
+
+    // Étape 3 : Supprimer le fichier physique (si existe)
+    if (fs.existsSync(filePath)) {
+      try {
+        await fs.promises.unlink(filePath);
+        console.log("Fichier supprimé avec succès:", filePath);
+      } catch (unlinkErr) {
         console.error("Erreur lors de la suppression du fichier :", unlinkErr);
-        return res.status(500).json({ message: "Erreur lors de la suppression du fichier." });
+        // On continue même si le fichier n'a pas pu être supprimé
       }
+    } else {
+      console.log("Fichier non trouvé :", filePath);
+      // On continue même si le fichier n'existe pas
+    }
 
-      console.log("Fichier supprimé avec succès.");
+    // Étape 4 : Supprimer l'enregistrement du mémoire
+    const [deleteResult] = await db.promise().query(
+      "DELETE FROM memoire WHERE id_memoire = ?",
+      [id]
+    );
+
+    if (deleteResult.affectedRows > 0) {
+      return res.status(200).json({ 
+        success: true,
+        message: "Mémoire et signatures associées supprimés avec succès.",
+        fileDeleted: fs.existsSync(filePath)
+      });
+    } else {
+      return res.status(404).json({ 
+        success: false,
+        message: "Mémoire non trouvé." 
+      });
+    }
+
+  } catch (error) {
+    console.error("Erreur lors de la suppression :", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Erreur lors de la suppression du mémoire.",
+      error: error.message 
     });
-
-    // Étape 3 : Supprimer l'enregistrement du mémoire dans la base de données
-    const deleteQuery = "DELETE FROM memoire WHERE id_memoire = ?";
-    db.query(deleteQuery, [id], (err, result) => {
-      if (err) {
-        console.error("Erreur lors de la suppression du mémoire :", err);
-        return res.status(500).json({ message: "Erreur lors de la suppression du mémoire." });
-      }
-
-      if (result.affectedRows > 0) {
-        return res.status(200).json({ message: "Plan de travail supprimé avec succès." });
-      } else {
-        return res.status(404).json({ message: "Mémoire non trouvé." });
-      }
-    });
-  });
+  }
 });
 
 //Recuperer les memoires valider ou rejeter 
@@ -923,7 +1062,7 @@ app.patch("/api/memoire/:id", (req, res) => {
     }
 
     if (action === 'rejected' && raison_rejet) {
-      // Envoyer un email ou une notification à l'étudiant avec la raison du rejet
+      // Envoyer un email ou une notification à l'étudiant
       // Pour l'exemple, on imagine une fonction sendEmailToStudent
       const emailQuery = `
         SELECT e.email
@@ -1101,17 +1240,6 @@ app.get("/api/notifications/:id_etudiant", (req, res) => {
 });
 
 
-// // Récupérer tous les mémoires
-// app.get("/api/memoire", (req, res) => {
-//   const query = "SELECT * FROM memoire";
-//   db.query(query, (err, results) => {
-//     if (err) {
-//       return res.status(500).json({ message: "Erreur lors de la récupération des mémoires." });
-//     }
-//     res.status(200).json({ memoire: results });
-//   });
-// });
-
 // Récupérer les statistiques
 app.get("/api/admin", (req, res) => {
   const query = `
@@ -1179,26 +1307,6 @@ app.post("/api/send-email", (req, res) => {
   });
 });
 
-// Mettre à jour le statut d'une mémoire
-// app.patch("/api/memoire/:id", (req, res) => {
-//   const { action } = req.body;
-//   const id = req.params.id;
-//   const status = action === 'validate' ? 'validated' : action === 'reject' ? 'rejected' : null;
-
-//   if (!status) {
-//     return res.status(400).json({ message: "Action non valide." });
-//   }
-
-//   const query = "UPDATE memoire SET status = ? WHERE id = ?";
-//   db.query(query, [status, id], (err) => {
-//     if (err) {
-//       return res.status(500).json({ message: "Erreur lors de la mise à jour du statut." });
-//     }
-//     res.status(200).json({ message: "Statut mis à jour avec succès." });
-//   });
-// });
-
-
 // Middleware pour les routes non trouvées
 app.use((req, res, next) => {
   res.status(404).send(`
@@ -1219,3 +1327,73 @@ const PORT = 5000;
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
+
+// Fonction de vérification de signature
+const verifySignature = (data, signature, publicKey) => {
+  try {
+    const verify = crypto.createVerify('SHA256');
+    verify.update(data);
+    return verify.verify(publicKey, signature, 'base64');
+  } catch (error) {
+    console.error('Erreur de vérification:', error);
+    return false;
+  }
+};
+
+
+// Route pour vérifier la signature
+app.get("/api/memoire/:id/verify-signature", async (req, res) => {
+  const { id } = req.params;
+  console.log('Requête reçue pour ID:', id); // Debug log
+
+  try {
+    // Vérifier si la signature existe
+    const query = `
+      SELECT 
+        ds.id as signature_id,
+        ds.signed_at,
+        a.name as admin_name,
+        m.libelle
+      FROM digital_signatures ds 
+      JOIN admin a ON ds.admin_id = a.id_admin 
+      JOIN memoire m ON ds.memoire_id = m.id_memoire
+      WHERE ds.memoire_id = ?
+    `;
+
+    console.log('Exécution de la requête:', query); // Debug log
+    
+    const [rows] = await db.promise().query(query, [id]);
+    console.log('Résultats de la requête:', rows); // Debug log
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Aucune signature trouvée pour ce mémoire"
+      });
+    }
+
+    const signatureInfo = rows[0];
+    
+    return res.status(200).json({
+      success: true,
+      details: {
+        signedBy: signatureInfo.admin_name,
+        signedAt: signatureInfo.signed_at,
+        memoire: signatureInfo.libelle
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur serveur:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur lors de la vérification de la signature",
+      error: error.message
+    });
+  }
+});
+
+
+
+
+

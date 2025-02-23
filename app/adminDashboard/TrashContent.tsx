@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { Trash2, RefreshCw, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const TrashContent = () => {
   const [deletedUsers, setDeletedUsers] = useState([]);

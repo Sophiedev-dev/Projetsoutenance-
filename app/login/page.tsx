@@ -38,17 +38,17 @@ const Dashboard = () => {
       }
   
       const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${userId}`);
-        if (!response.ok) {
+      if (!response.ok) {
         throw new Error(`Erreur serveur (${response.status}) : ${await response.text()}`);
       }
   
       const data = await response.json();
-  
-      // Déboguer la réponse pour vérifier sa structure
       console.log('Données reçues depuis l\'API:', data);
   
-      // Adapter le traitement selon la structure reçue
-      if (Array.isArray(data.memoire)) {
+      // Les données sont déjà un tableau, on peut les utiliser directement
+      if (Array.isArray(data)) {
+        setMemoires(data);
+      } else if (data.memoire && Array.isArray(data.memoire)) {
         setMemoires(data.memoire);
       } else {
         console.error('Format inattendu des données reçues :', data);
@@ -61,16 +61,15 @@ const Dashboard = () => {
       }
     }
   };
-
-   // Récupérer l'utilisateur depuis le localStorage
-   useEffect(() => {
-      fetchMemoires();
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    }, []); 
-
+  
+  // Récupérer l'utilisateur depuis le localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      fetchMemoires(); // Appeler fetchMemoires après avoir défini l'utilisateur
+    }
+  }, []);
 
     const handleDeleteMemoire = async (memoireId) => {
       try {
@@ -164,7 +163,7 @@ const Dashboard = () => {
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Welcome {user?.user?.surname || 'Étudiant'} !</h2>
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Welcome {user?.user?.name || 'Étudiant'} !</h2>
             <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
           <button

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search, ShoppingCart, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
@@ -11,8 +11,13 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { motion } from 'framer-motion';
+
 
 const Homepage = () => {
+  const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
   const [memoires, setMemoires] = useState([]);
   const [selectedMemoire, setSelectedMemoire] = useState(null);
   const [isClient, setIsClient] = useState(false); // Etat pour gérer l'exécution côté client
@@ -72,7 +77,6 @@ const Homepage = () => {
     }
 };
 
-
   useEffect(() => {
     if (searchTerm) {
       fetchMemoires('validated', '', searchTerm);
@@ -125,7 +129,6 @@ const Homepage = () => {
     return canvas.toDataURL("image/png"); // Convertit en image
   };
 
-  const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
 
 useEffect(() => {
   memoires.forEach(async (memoire) => {
@@ -137,139 +140,169 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Header avec effet de verre */}
-      <header className="backdrop-blur-md bg-white/70 fixed w-full z-50">
+       {/* Header with glassmorphism effect */}
+       <motion.header 
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        className="backdrop-blur-md bg-white/80 fixed w-full z-50 border-b border-gray-200/50"
+      >
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between py-4">
-            <div className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-              BANK-MEMO
-            </div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600"
+            >
+              ARCHIVA
+            </motion.div>
             
-            {/* Barre de recherche modernisée */}
-            <div className="flex-1 max-w-xl mx-8">
-      <div className="relative flex items-center bg-gray-100/80 rounded-full group">
-        {/* Icône de recherche à gauche */}
-        <Search className="absolute left-4 text-gray-400 group-hover:text-blue-500 transition-colors" size={20} />
-
-        {/* Champ de recherche */}
-        <input
-          type="text"
-          placeholder="Rechercher un mémoire..."
-          className="w-full pl-12 pr-6 py-3 border-none bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 group-hover:bg-white rounded-full"
-          value={searchTerm}
-          onChange={(e) => {
-            const value = e.target.value || "";
-            setSearchTerm(value);
-            fetchSuggestions(value); // Appel API à chaque frappe
-          }}
-        />
-
-        {/* Suggestions affichées sous l'input */}
-        {suggestions.length > 0 && (
-          <ul className="absolute top-full left-0 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-md z-50 overflow-hidden">
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={index}
-                className="flex items-center px-4 py-2 hover:bg-gray-200 cursor-pointer transition-all duration-200"
-                onClick={() => {
-                  setSearchTerm(suggestion);
-                  setSuggestions([]);
-                  fetchMemoires("validated", "", suggestion);
-                }}
-              >
-                <Search className="mr-2 text-gray-500" size={16} />
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+            {/* Enhanced Search Bar */}
+            <div className="flex-1 max-w-2xl mx-8">
+              <div className="relative">
+                <motion.div 
+                  whileFocus={{ scale: 1.02 }}
+                  className="flex items-center bg-white/70 rounded-full shadow-sm hover:shadow-md transition-all duration-300"
+                >
+                  <Search className="absolute left-4 text-indigo-500" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par titre, auteur ou mot-clé..."
+                    className="w-full pl-12 pr-6 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-full text-gray-700"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </motion.div>
+              </div>
             </div>
           </div>
 
-          {/* Navigation avec effet de survol animé */}
+          {/* Modern Navigation */}
           <nav className="flex justify-between py-4">
-  <div className="flex space-x-8">
-    {['Home', 'Books', 'Magazines', 'Textbooks', 'Audiobooks'].map((item) => (
-      <a
-        key={item}
-        href={item === 'Books' ? '#current-resumes' : '#'}
-        className="relative text-gray-600 hover:text-blue-500 transition-colors duration-300 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-blue-500 hover:after:w-full after:transition-all"
-      >
-        {item}
-      </a>
-    ))}
-  </div>
+            <motion.div 
+              className="flex space-x-8"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {[
+                { name: 'Accueil', icon: BookOpen },
+                { name: 'Mémoires', icon: GraduationCap },
+                { name: 'Collections', icon: Award }
+              ].map((item) => (
+                <motion.a
+                  key={item.name}
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300"
+                  href="#"
+                >
+                  <item.icon size={18} />
+                  <span>{item.name}</span>
+                </motion.a>
+              ))}
+            </motion.div>
 
-  {/* Section Sign In / Sign Up poussée à l'extrémité droite */}
-  <div className="flex items-center space-x-4 ml-auto">
-  <a
-    href="./Sign"
-    className="px-3 py-2 text-gray-600 hover:text-blue-500 transition-colors duration-300 font-bold text-xl rounded-md hover:underline"
-  >
-    Sign In
-  </a>
-  <a
-    href="./register"
-    className="px-5 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all duration-300 font-bold text-xl shadow-md"
-  >
-    Sign Up
-  </a>
-</div>
-
-</nav>
-
-
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <motion.a
+                whileHover={{ scale: 1.05 }}
+                className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
+                href="./Sign"
+              >
+                <UserCheck size={20} />
+                <span>Espace Admin</span>
+              </motion.a>
+            </motion.div>
+          </nav>
         </div>
-      </header>
+      </motion.header>
 
-      {/* Section héro avec overlay amélioré */}
-      <div>
-        <div className="relative bg-[url('../images/image.jpg')] bg-cover bg-center h-[80vh]">
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
-          <div className="max-w-7xl mx-auto px-4 py-16 h-full flex items-center">
-            <div className="w-1/2 relative z-10">
-              <h2 className="text-6xl font-black mb-6 text-white leading-tight">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                  ARCHIVA
-                </span>
-                <br />
-                <span className="text-4xl">Université de Yaoundé I</span>
-              </h2>
-              <p className="text-xl text-gray-200 mb-8 font-light">
-                Building Tomorrow's Leaders Through Academic Excellence
-              </p>
+     {/* Hero Section with Parallax Effect */}
+     <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative bg-[url('../images/image.jpg')] bg-cover bg-fixed bg-center h-screen"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
+        <div className="max-w-7xl mx-auto px-4 h-full flex items-center">
+          <motion.div 
+            initial={{ x: -100 }}
+            animate={{ x: 0 }}
+            className="w-full md:w-2/3 lg:w-1/2 relative z-10"
+          >
+            <h1 className="text-5xl md:text-7xl font-black mb-6 text-white leading-tight">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                Bibliothèque
+              </span>
+              <br />
+              <span className="text-3xl md:text-4xl">Université de Yaoundé I</span>
+            </h1>
+            <p className="text-xl text-gray-200 mb-8 font-light max-w-xl">
+              Découvrez notre collection de travaux académiques et contribuez à l'excellence universitaire.
+            </p>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 text-lg font-medium"
+            >
               <Link href="./Sign">
-                <button className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-10 py-4 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 text-lg font-medium">
-                  ADD RESUME
-                </button>
+                  Ajoutez votre recherche
               </Link>
-            </div>
-          </div>
+          </motion.button>
+          </motion.div>
+        </div>
+      </motion.div>
+
+        {/* Stats Section */}
+        <div className="max-w-7xl mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { number: "2500+", label: "Mémoires disponibles" },
+            { number: "150+", label: "Chercheurs actifs" },
+            { number: "50+", label: "Spécialités" }
+          ].map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <h3 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                {stat.number}
+              </h3>
+              <p className="text-gray-600 mt-2">{stat.label}</p>
+            </motion.div>
+          ))}
         </div>
       </div>
 
       {/* Section des mémoires avec effet de carte moderne */}
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        <div className="flex items-center justify-between mb-12">
-          <h2 id="current-resumes" className="text-4xl font-bold text-gray-800">Current Resumes</h2>
-          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors text-lg">
-            View All → 
-          </a>
-        </div>
+{/* Section des mémoires avec un design plus professionnel */}
+<div className="max-w-7xl mx-auto px-4 py-16">
+  <div className="mb-12">
+    <h2 id="current-resumes" className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+      Bibliothèque Numérique
+    </h2>
+    <p className="text-gray-600 text-lg">
+      Explorez notre collection de travaux académiques de qualité
+    </p>
+  </div>
 
-          {/* Sections pour chaque cycle */}
-          {['Bachelor', 'Master', 'PhD'].map((cycle) => (
-    <div key={cycle} className="mb-12">
-      <h3 className="text-3xl font-bold text-gray-800 mb-4">{cycle} Resumes</h3>
+  {['Bachelor', 'Master', 'PhD'].map((cycle) => (
+    <div key={cycle} className="mb-16">
+      <div className="flex items-center space-x-4 mb-8">
+        <h3 className="text-2xl font-semibold text-gray-800">{cycle}</h3>
+        <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
+      </div>
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        {/* Liste des mémoires filtrée par cycle */}
         {memoires.filter(memoire => memoire.cycle === cycle).map((memoire) => (
           <div
             key={memoire.id_memoire}
-            className="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
+            className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
             onClick={() => setSelectedMemoire(memoire)}
           >
-            <div className="relative w-full h-64 overflow-hidden">
+            <div className="relative w-full h-56 overflow-hidden bg-gray-50">
               {thumbnails[memoire.id_memoire] ? (
                 <div className="relative w-full h-full">
                   <Image
@@ -277,40 +310,40 @@ useEffect(() => {
                     alt="PDF Cover"
                     width={300}
                     height={300}
-                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <div className="w-full h-full flex items-center justify-center">
                   <div className="animate-pulse flex flex-col items-center">
-                    <div className="h-8 w-8 mb-2 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                    <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
                     <span className="text-sm text-gray-400">Chargement...</span>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="p-4 space-y-2">
-              <h3 className="text-lg font-semibold text-gray-800 line-clamp-2 group-hover:text-blue-600 transition-colors">
+            <div className="p-5">
+              <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
                 {memoire.libelle}
-              </h3>
+              </h4>
 
-              <div className="flex flex-wrap gap-2">
-                <span className="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
                   {memoire.cycle}
                 </span>
-                <span className="px-2 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
                   {memoire.speciality}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                 <span className="text-sm font-medium text-gray-500">
                   {memoire.annee}
                 </span>
-                <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-3 py-1 bg-blue-600 text-white text-sm rounded-full hover:bg-blue-700">
-                  Voir plus
+                <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm rounded-full hover:shadow-lg transform hover:scale-105 transition-all">
+                  Consulter
                 </button>
               </div>
             </div>
@@ -320,28 +353,59 @@ useEffect(() => {
     </div>
   ))}
   
-  {/* Prévisualisation du PDF */}
-  {selectedMemoire && (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
-        <div className="flex justify-between items-center p-4 border-b">
+{/* Prévisualisation du PDF */}
+{selectedMemoire && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
+      <div className="flex justify-between items-center p-4 border-b">
+        <div className="flex flex-col">
           <h2 className="font-bold text-lg">{selectedMemoire.libelle}</h2>
-          <button
-            className="text-gray-500 hover:text-gray-700"
-            onClick={() => setSelectedMemoire(null)}
-          >
-            ✕
-          </button>
+          {/* Informations de signature en haut de la prévisualisation */}
+          <div className="mt-2 text-sm">
+            <div className="flex items-center text-green-600">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              <span>Document signé et validé</span>
+            </div>
+            <div className="text-gray-600">
+              Signé par {selectedMemoire.details?.signedBy} le {' '}
+              {selectedMemoire.details?.signedAt ? 
+                format(new Date(selectedMemoire.details.signedAt), 'dd MMMM yyyy', { locale: fr }) 
+                : 'Date non disponible'
+              }
+            </div>
+          </div>
         </div>
-        <div className="w-full h-full">
-          <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
-            <Viewer fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} plugins={[defaultLayoutPluginInstance]} />
-          </Worker>
+        <button
+          className="text-gray-500 hover:text-gray-700"
+          onClick={() => setSelectedMemoire(null)}
+        >
+          ✕
+        </button>
+      </div>
+      <div className="w-full h-full relative">
+        {/* Filigrane de signature sur la première page */}
+        <div className="absolute top-20 right-20 z-10 bg-green-50 p-4 rounded-lg shadow-lg border border-green-200 rotate-[-15deg]">
+          <div className="text-green-700 font-medium text-center">
+            <div className="flex items-center justify-center mb-2">
+              <CheckCircle2 className="w-6 h-6 mr-2" />
+              Document Validé
+            </div>
+           <div className="text-gray-600">
+              Approuvee et Signer
+           </div>
+          </div>
         </div>
+        
+        <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
+          <Viewer 
+            fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`} 
+            plugins={[defaultLayoutPluginInstance]}
+          />
+        </Worker>
       </div>
     </div>
-  )}
-
+  </div>
+)}
 
       </div>
     </div>

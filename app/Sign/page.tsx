@@ -25,19 +25,40 @@ const Form = () => {
   
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('user', JSON.stringify(data));
+        console.log('Données de connexion:', data); // Debug log
   
         if (data.role === 'admin') {
+          localStorage.setItem('user', JSON.stringify({
+            user: {
+              id_admin: data.user.id_admin,
+              name: data.user.name,
+              email: data.user.email
+            },
+            role: data.role
+          }));
           router.push('/adminDashboard');
         } else if (data.role === 'etudiant') {
-          router.push('/login');
+          const userData = {
+            user: {
+              id_etudiant: data.user.id_etudiant,
+              name: data.user.name,
+              email: data.user.email
+            },
+            role: data.role
+          };
+          
+          localStorage.setItem('user', JSON.stringify(userData));
+          console.log('ID étudiant pour navigation:', data.user.id_etudiant);
+          
+          router.push(`/login?id=${data.user.id_etudiant}`);
         }
       } else {
         const data = await response.json();
-        setError(data.message || 'Erreur de connexion.');
+        setError(data.message || 'Erreur de connexion');
       }
     } catch (err) {
-      setError('Erreur de connexion au serveur.');
+      console.error('Erreur complète:', err);
+      setError('Erreur de connexion au serveur');
     }
   };
 

@@ -11,6 +11,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
+import SignatureVerification from '../components/SignatureVerification';
 
 
 const AdminDashboard = () => {
@@ -353,26 +354,61 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleValidation = async (memoireId) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'validated' }),
-      });
+const handleValidation = async (memoireId: number) => {
 
-      if (!response.ok) {
-        throw new Error('Erreur lors de la validation');
-      }
-
-      toast.success('Mémoire validé avec succès');
-      fetchMemoires();
-      fetchStats();
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la validation');
+  try {
+    // Récupérer les données utilisateur du localStorage
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      toast.error('Session administrateur non trouvée');
+      return;
     }
-  };
+
+    const userData = JSON.parse(userStr);
+    console.log('Données utilisateur:', userData); // Debug log
+
+    // Accéder à l'id_admin via user.id_admin
+    const id_admin = userData.user?.id_admin;
+    console.log('ID Admin trouvé:', id_admin); // Debug log
+
+    if (!id_admin) {
+      toast.error('ID administrateur non trouvé');
+      return;
+    }
+
+    const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'validated',
+        id_admin: id_admin
+      })
+    });
+
+    console.log('Données envoyées:', { 
+      memoireId, 
+      id_admin, 
+      status: 'validated' 
+    }); // Debug log
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la validation');
+    }
+
+    const data = await response.json();
+    console.log('Réponse du serveur:', data); // Debug log
+
+    toast.success(data.message || 'Mémoire validé avec succès');
+    fetchMemoires();
+
+  } catch (error) {
+    console.error('Erreur détaillée:', error);
+    toast.error(error.message || 'Erreur lors de la validation');
+  }
+};
 
   const renderDashboard = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -539,6 +575,7 @@ const AdminDashboard = () => {
         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+        {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Vérification de signature</th> */}
       </tr>
     </thead>
     <tbody className="divide-y divide-gray-100">
@@ -602,6 +639,11 @@ const AdminDashboard = () => {
           </button>
         </div>
       </td>
+      {/* <td className="px-6 py-4">
+        {memoire.status === 'validated' && (
+          <SignatureVerification memoireId={memoire.id_memoire} />
+        )}
+      </td> */}
     </tr>
   ))}
     </tbody>
