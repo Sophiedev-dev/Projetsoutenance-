@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart, Users, FileText, Settings, ChevronDown, Book, Trash, 
+import {
+  BarChart, Users, FileText, Settings, ChevronDown, Book, Trash,
   Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
   PieChart, TrendingUp, UserCheck, Clock,
   Trash2
@@ -12,7 +12,6 @@ import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
 import SignatureVerification from '../components/SignatureVerification';
-
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -65,7 +64,7 @@ const AdminDashboard = () => {
       toast.error('Erreur lors de la récupération des statistiques');
     }
   };
-  
+
   const fetchDashboardStats = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/dashboard');
@@ -81,7 +80,6 @@ const AdminDashboard = () => {
       toast.error('Erreur lors de la récupération des statistiques du tableau de bord');
     }
   };
-  
 
   const fetchMemoires = async () => {
     try {
@@ -112,7 +110,7 @@ const AdminDashboard = () => {
       setIsLoading(true);
       const response = await fetch('http://localhost:5000/api/users');
       const data = await response.json();
-      
+
       if (data.success && Array.isArray(data.users)) {
         setUsers(data.users);
       } else {
@@ -161,31 +159,28 @@ const AdminDashboard = () => {
     }
   };
 
-
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir déplacer cet utilisateur vers la corbeille ?')) {
       return;
     }
-  
+
     try {
-      // Vérifiez que l'URL est correcte
       const response = await fetch(`http://localhost:5000/api/users/${userId}/soft-delete`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la suppression');
       }
-  
+
       const data = await response.json();
-      
+
       if (data.success) {
         toast.success('Utilisateur déplacé vers la corbeille');
-        // Rafraîchir la liste des utilisateurs
         fetchUsers();
       } else {
         toast.error(data.message || 'Erreur lors de la suppression');
@@ -195,8 +190,6 @@ const AdminDashboard = () => {
       toast.error(error.message || 'Erreur lors de la suppression');
     }
   };
-
-  
 
   const renderUsers = () => (
     <motion.div
@@ -354,61 +347,47 @@ const AdminDashboard = () => {
     }
   };
 
-const handleValidation = async (memoireId: number) => {
+  const handleValidation = async (memoireId: number) => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        toast.error('Session administrateur non trouvée');
+        return;
+      }
 
-  try {
-    // Récupérer les données utilisateur du localStorage
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      toast.error('Session administrateur non trouvée');
-      return;
+      const userData = JSON.parse(userStr);
+      const id_admin = userData.user?.id_admin;
+
+      if (!id_admin) {
+        toast.error('ID administrateur non trouvé');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'validated',
+          id_admin: id_admin
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la validation');
+      }
+
+      const data = await response.json();
+      toast.success(data.message || 'Mémoire validé avec succès');
+      fetchMemoires();
+      fetchDashboardStats(); // Mettre à jour les statistiques du tableau de bord
+    } catch (error) {
+      console.error('Erreur détaillée:', error);
+      toast.error(error.message || 'Erreur lors de la validation');
     }
-
-    const userData = JSON.parse(userStr);
-    console.log('Données utilisateur:', userData); // Debug log
-
-    // Accéder à l'id_admin via user.id_admin
-    const id_admin = userData.user?.id_admin;
-    console.log('ID Admin trouvé:', id_admin); // Debug log
-
-    if (!id_admin) {
-      toast.error('ID administrateur non trouvé');
-      return;
-    }
-
-    const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        status: 'validated',
-        id_admin: id_admin
-      })
-    });
-
-    console.log('Données envoyées:', { 
-      memoireId, 
-      id_admin, 
-      status: 'validated' 
-    }); // Debug log
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Erreur lors de la validation');
-    }
-
-    const data = await response.json();
-    console.log('Réponse du serveur:', data); // Debug log
-
-    toast.success(data.message || 'Mémoire validé avec succès');
-    fetchMemoires();
-
-  } catch (error) {
-    console.error('Erreur détaillée:', error);
-    toast.error(error.message || 'Erreur lors de la validation');
-  }
-};
+  };
 
   const renderDashboard = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -428,7 +407,7 @@ const handleValidation = async (memoireId: number) => {
         </div>
       </div>
     ))}
-      
+
       {/* Tableau des soumissions récentes */}
       <div className="col-span-full lg:col-span-2 bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold mb-4">Soumissions récentes</h3>
@@ -448,8 +427,8 @@ const handleValidation = async (memoireId: number) => {
                     <td className="py-2">{memoire.libelle}</td>
                     <td className="py-2">{new Date(memoire.date_soumission).toLocaleDateString()}</td>
                     <td className="py-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${memoire.status === 'validé' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {memoire.status === 'validé' ? 'Validé' : 'En attente'}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${memoire.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {memoire.status === 'validated' ? 'Validé' : 'En attente'}
                       </span>
                     </td>
                   </tr>
@@ -459,36 +438,38 @@ const handleValidation = async (memoireId: number) => {
           </table>
         </div>
       </div>
-  
-         {/* Graphiques des spécialités les plus actives */}
-    <div className="col-span-full lg:col-span-2 bg-white rounded-xl shadow-md p-6">
-      <h3 className="text-lg font-semibold mb-4">Graphiques des spécialités les plus actives</h3>
-      <div className="space-y-4">
-        {dashboardStats.topSpecialities && dashboardStats.topSpecialities.length > 0 ? (
-          dashboardStats.topSpecialities.map((speciality, index) => (
-            <div key={`${speciality.name || 'no-name'}-${index}`} className="flex items-center justify-between">
-              <span>{speciality.name || 'Aucune spécialité'}</span>
-              <div className="flex items-center">
-                <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
-                  <div
-                    className="bg-blue-500 rounded-full h-2"
-                    style={{ width: `${(speciality.count / Math.max(...dashboardStats.topSpecialities.map(s => s.count))) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm text-gray-600">{speciality.count}</span>
-              </div>
+
+      {/* Graphiques des spécialités les plus actives */}
+      <div className="col-span-full lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+  <h3 className="text-lg font-semibold mb-4">Graphiques des spécialités les plus actives</h3>
+  <div className="space-y-4">
+    {dashboardStats.topSpecialities && dashboardStats.topSpecialities.length > 0 ? (
+      dashboardStats.topSpecialities.map((speciality, index) => (
+        <div key={`${speciality.speciality}-${index}`} className="flex items-center justify-between">
+          <span>{speciality.speciality}</span>
+          <div className="flex items-center">
+            <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
+              <div
+                className="bg-blue-500 rounded-full h-2"
+                style={{ width: `${(speciality.count / Math.max(...dashboardStats.topSpecialities.map(s => s.count))) * 100}%` }}
+              />
             </div>
-          ))
-        ) : (
-          <div className="text-center text-gray-500">
-            Aucune spécialité disponible
+            <span className="text-sm text-gray-600">{speciality.count}</span>
           </div>
-        )}
+        </div>
+      ))
+    ) : (
+      <div className="text-center text-gray-500">
+        Aucune spécialité disponible
       </div>
-    </div>
-    </div>
+    )}
+  </div>
+</div>
+</div>
   );
+
   
+
   // Le StatCard reste inchangé
   const StatCard = ({ title, value, icon, color }) => (
     <div className={`bg-white rounded-xl shadow-md p-6 border-l-4 border-${color}-500`}>
@@ -501,7 +482,6 @@ const handleValidation = async (memoireId: number) => {
       </div>
     </div>
   );
-  
 
   const renderMemoires = () => {
     const filteredMemoires = memoires.filter(memoire => {
@@ -566,91 +546,83 @@ const handleValidation = async (memoireId: number) => {
 
         {/* Tableau des mémoires */}
         <div className="overflow-x-auto">
-  <table className="w-full">
-    <thead>
-      <tr className="bg-gray-50">
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Étudiant</th>
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Titre</th>
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
-        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
-        {/* <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Vérification de signature</th> */}
-      </tr>
-    </thead>
-    <tbody className="divide-y divide-gray-100">
-  {filteredMemoires.map((memoire) => (
-    <tr key={memoire.id_memoire} className="hover:bg-gray-50">
-      <td className="px-6 py-4">{memoire.etudiant_nom}</td>
-      <td className="px-6 py-4">
-        <div className="flex items-center">
-          <span className="font-medium">{memoire.libelle}</span>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Étudiant</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Titre</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Spécialité</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredMemoires.map((memoire) => (
+                <tr key={memoire.id_memoire} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">{memoire.etudiant_nom}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <span className="font-medium">{memoire.libelle}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      {memoire.cycle}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                      {memoire.speciality}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={memoire.status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Visualiser"
+                      >
+                        <Download size={20} />
+                      </button>
+                      {memoire.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleValidation(memoire.id_memoire)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Valider"
+                          >
+                            <CheckCircle size={20} style={{ border: '1px solid red' }} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedMemoire(memoire);
+                              setRejectionReason('');
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Rejeter"
+                          >
+                            <XCircle size={20} />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash size={20} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </td>
-      <td className="px-6 py-4">
-        <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-          {memoire.cycle}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-          {memoire.speciality}
-        </span>
-      </td>
-      <td className="px-6 py-4">
-        <StatusBadge status={memoire.status} />
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex space-x-2">
-          <button
-            onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Visualiser"
-          >
-            <Download size={20} />
-          </button>
-          {memoire.status === 'pending' && (
-            <>
-              <button
-                onClick={() => handleValidation(memoire.id_memoire)}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                title="Valider"
-              >
-                <CheckCircle size={20} style={{ border: '1px solid red' }} />
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedMemoire(memoire);
-                  setRejectionReason('');
-                }}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Rejeter"
-              >
-                <XCircle size={20} />
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => handleDeleteMemoire(memoire.id_memoire)}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="Supprimer"
-          >
-            <Trash size={20} />
-          </button>
-        </div>
-      </td>
-      {/* <td className="px-6 py-4">
-        {memoire.status === 'validated' && (
-          <SignatureVerification memoireId={memoire.id_memoire} />
-        )}
-      </td> */}
-    </tr>
-  ))}
-    </tbody>
-
-  </table>
-</div>
-
 
         {/* Modal de rejet */}
         {selectedMemoire && (
@@ -758,16 +730,16 @@ const handleValidation = async (memoireId: number) => {
               Paramètres
             </button>
             <button
-               onClick={() => setActiveTab('trash')}
-               className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-               activeTab === 'trash'
-               ? 'bg-blue-500 text-white'
-               : 'text-gray-600 hover:bg-gray-50'
-               }`}
-              >
-               <Trash2 size={20} className="mr-3" />
-                 Corbeille
-              </button>
+              onClick={() => setActiveTab('trash')}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === 'trash'
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Trash2 size={20} className="mr-3" />
+              Corbeille
+            </button>
           </nav>
         </div>
       </motion.div>

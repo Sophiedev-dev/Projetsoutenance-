@@ -500,27 +500,52 @@ app.get("/api/admin", async (req, res) => {
 app.get("/api/dashboard", async (req, res) => {
   try {
     // Statistiques récentes sur les mémoires soumises
-    const [recentSubmissions] = await db.promise().query("SELECT * FROM memoire ORDER BY date_soumission DESC LIMIT 5");
+    const [recentSubmissions] = await db.promise().query(`
+      SELECT m.*, e.name as etudiant_nom 
+      FROM memoire m 
+      JOIN etudiant e ON m.id_etudiant = e.id_etudiant 
+      ORDER BY m.date_soumission DESC LIMIT 5
+    `);
 
-    // Top 3 des spécialités les plus populaires
-    const [topSpecialities] = await db.promise().query("SELECT speciality, COUNT(*) AS count FROM memoire GROUP BY speciality ORDER BY count DESC LIMIT 3");
+    // Top spécialités les plus populaires avec gestion des valeurs NULL
+    const [topSpecialities] = await db.promise().query(`
+      SELECT 
+        COALESCE(speciality, 'Non spécifié') as speciality,
+        COUNT(*) AS count
+      FROM memoire
+      WHERE speciality IS NOT NULL 
+      AND speciality != ''
+      GROUP BY speciality
+      ORDER BY count DESC
+      LIMIT 5
+    `);
 
     // Statistiques sur les soumissions mensuelles
     const [monthlySubmissions] = await db.promise().query(`
-      SELECT MONTH(date_soumission) AS month, COUNT(*) AS submissions
+      SELECT 
+        MONTH(date_soumission) AS month,
+        COUNT(*) AS submissions
       FROM memoire
+      WHERE date_soumission IS NOT NULL
       GROUP BY MONTH(date_soumission)
       ORDER BY month
     `);
 
+    // Si aucune spécialité n'est trouvée, renvoyer un tableau vide
+    const formattedTopSpecialities = topSpecialities.length > 0 ? topSpecialities : [];
+
     res.json({
+      success: true,
       recentSubmissions: recentSubmissions,
-      topSpecialities: topSpecialities,
+      topSpecialities: formattedTopSpecialities,
       monthlySubmissions: monthlySubmissions
     });
   } catch (error) {
     console.error("Erreur lors de la récupération des statistiques du tableau de bord:", error);
-    res.status(500).json({ message: "Erreur lors de la récupération des statistiques du tableau de bord." });
+    res.status(500).json({ 
+      success: false,
+      message: "Erreur lors de la récupération des statistiques du tableau de bord." 
+    });
   }
 });
 
@@ -1117,6 +1142,34 @@ app.get("/api/memoire", (req, res) => {
   });
 });
 
+//recuperer les statistiques sur les moires pour le home 
+// Route pour obtenir les statistiques
+app.get("/api/stats", async (req, res) => {
+  try {
+    const [stats] = await db.promise().query(`
+      SELECT 
+        (SELECT COUNT(*) FROM memoire WHERE status = 'validated') as memoires,
+        (SELECT COUNT(DISTINCT id_etudiant) FROM memoire) as chercheurs,
+        (SELECT COUNT(DISTINCT speciality) FROM memoire) as specialites
+    `);
+
+    res.json({
+      success: true,
+      memoires: stats[0].memoires || 0,
+      chercheurs: stats[0].chercheurs || 0,
+      specialites: stats[0].specialites || 0
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des statistiques:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la récupération des statistiques",
+      error: error.message
+    });
+  }
+});
+
+
 app.get('/api/memoire/suggestions', (req, res) => {
   const query = req.query.q?.toLowerCase();
   if (!query) {
@@ -1147,6 +1200,39 @@ app.get('/api/memoire/suggestions', (req, res) => {
   });
 });
 
+// Route pour obtenir un mémoire spécifique
+app.get("/api/memoire/:id", (req, res) => {
+  const { id } = req.params;
+  
+  const query = `
+    SELECT m.*, e.name AS etudiant_nom
+    FROM memoire m
+    JOIN etudiant e ON m.id_etudiant = e.id_etudiant
+    WHERE m.id_memoire = ?
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error("Erreur lors de la récupération du mémoire:", err);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Erreur lors de la récupération du mémoire" 
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Mémoire non trouvé" 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      memoire: results[0] 
+    });
+  });
+});
 
 
 app.put("/api/memoire/reject/:id", (req, res) => {
