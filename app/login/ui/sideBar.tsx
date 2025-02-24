@@ -11,7 +11,7 @@ const MySideBar = () => {
         <nav className="flex-1 px-4 space-y-2">
           {[
             { name: "Dashboard", path: "./login", icon: <BookOpen className="mr-3" /> },
-            { name: "Profile", path: "./profile", icon: <User className="mr-3" /> }
+            { name: "Profile", path: "../../Profile", icon: <User className="mr-3" /> }
           ].map((item, index) => (
             <a
               key={index}
