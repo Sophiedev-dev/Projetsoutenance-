@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { MentionStars } from './components/MentionStars';
 
 const Homepage = () => {
   const router = useRouter();
@@ -328,6 +329,14 @@ const Homepage = () => {
                       </div>
                     )}
                   </div>
+
+                  <div className="mb-3">
+                    {memoire.mention ? (
+                    <MentionStars mention={memoire.mention} size="sm" />
+                    ) : (
+                   <span className="text-sm text-gray-500">Non noté</span>
+                   )}
+                 </div>
 
                   <div className="p-5">
                     <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">

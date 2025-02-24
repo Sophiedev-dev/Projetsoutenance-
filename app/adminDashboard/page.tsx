@@ -5,13 +5,15 @@ import {
   BarChart, Users, FileText, Settings, ChevronDown, Book, Trash,
   Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
   PieChart, TrendingUp, UserCheck, Clock,
-  Trash2
+  Trash2,
+  ArrowLeft
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
 import SignatureVerification from '../components/SignatureVerification';
+import { MentionStars } from '../components/MentionStars';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -577,6 +579,15 @@ const AdminDashboard = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                    {memoire.mention ? (
+                    <MentionStars mention={memoire.mention} size="sm" />
+                    ) : (
+                      <span className="text-sm text-gray-500">Non noté</span>
+                    )}      
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
                     <StatusBadge status={memoire.status} />
                   </td>
                   <td className="px-6 py-4">
@@ -763,6 +774,15 @@ const AdminDashboard = () => {
           {activeTab === 'trash' && <TrashContent />}
         </motion.div>
       </div>
+      <div className="p-6 border-t border-gray-100">
+          <a
+            href="/"
+            className="flex items-center w-full p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <ArrowLeft size={20} className="mr-3" />
+            Retour à l'accueil
+          </a>
+        </div>
       <ToastContainer />
     </div>
   );

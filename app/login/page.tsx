@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, FileText, Upload, X, CheckCircle, AlertCircle, Clock, Trash, Download } from 'lucide-react';
+import { Bell, FileText, Upload, X, CheckCircle, AlertCircle, Clock, Trash, Download, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import MySideBar from './ui/sideBar';
 
@@ -19,6 +19,7 @@ function App() {
     speciality: '',
     university: '',
     description: '',
+    mention: '',
     file: null as File | null,
   });
 
@@ -109,6 +110,7 @@ function App() {
           speciality: '',
           university: '',
           description: '',
+          mention:'',
           file: null,
         });
         setFilePreview(null);
@@ -170,6 +172,23 @@ function App() {
     memoire.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
     memoire.speciality.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const MentionStars = ({ mention }) => {
+    const stars = {
+      'Passable': 1,
+      'Bien': 2,
+      'Tres Bien': 3,
+      'Excellent': 4
+    };
+
+    return (
+      <div className="flex items-center">
+        {[...Array(stars[mention] || 0)].map((_, index) => (
+          <Star key={index} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
@@ -299,6 +318,25 @@ function App() {
                       required
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mention
+                    </label>
+                    <select
+                      name="mention"
+                      value={newMemoire.mention}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, mention: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    >
+                      <option value="">Sélectionnez une mention</option>
+                      <option value="Passable"> ⭐</option>
+                      <option value="Bien"> ⭐⭐</option>
+                      <option value="Tres Bien"> ⭐⭐⭐</option>
+                      <option value="Excellent"> ⭐⭐⭐⭐</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="mt-6">
@@ -374,6 +412,7 @@ function App() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Speciality</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">University</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Mention</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
                 </tr>
               </thead>
@@ -386,7 +425,7 @@ function App() {
                         {memoire.libelle}
                       </div>
                     </td>
-                    <td className="px-6 py-4">{new Date(memoire.annee).getFullYear()}</td>
+                    <td className="px-6 py-4">{new Date(memoire.date_soumission).getFullYear()}</td>
                     <td className="px-6 py-4">{memoire.cycle}</td>
                     <td className="px-6 py-4">{memoire.speciality}</td>
                     <td className="px-6 py-4">{memoire.university}</td>
@@ -395,6 +434,14 @@ function App() {
                         {getStatusIcon(memoire.status)}
                         <span className="ml-2 capitalize">{memoire.status}</span>
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <MentionStars mention={memoire.mention} />
+                        <span className="ml-2 text-sm text-gray-600">
+                          {memoire.mention || 'Non noté'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex space-x-2">

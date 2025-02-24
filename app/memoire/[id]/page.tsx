@@ -17,6 +17,7 @@ import {
 // import StarRating from '@/app/components/StarRating';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
+import { MentionStars } from '@/app/components/MentionStars';
 
 const MemoirePage = () => {
   const router = useRouter();
@@ -130,6 +131,14 @@ const MemoirePage = () => {
                 <GraduationCap className="h-5 w-5 mr-2" />
                 <span>Spécialité: {memoire.speciality}</span>
               </div>
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">Mention</h3>
+                {memoire.mention ? (
+                <MentionStars mention={memoire.mention} size="lg" />
+                ) : (
+                <span className="text-gray-500">Non noté</span>
+                )}
+             </div>
             </div>
             <div className="flex flex-col items-center justify-center">
               {/* <StarRating id_memoire={memoire.id_memoire} /> */}

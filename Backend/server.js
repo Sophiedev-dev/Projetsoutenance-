@@ -421,19 +421,37 @@ app.get("/api/users/trash", (req, res) => {
 
 // Route pour la soumission des données
 app.post("/api/memoire", upload.single("file"), (req, res) => {
-  const { libelle, annee, cycle, speciality, university, description, id_etudiant } =
-    req.body;
+  const {
+    libelle,
+    annee, 
+    cycle, 
+    speciality,
+    university,
+    description,
+    id_etudiant,
+    mention,
+    status
+  } = req.body;
 
   if (!req.file) {
     return res.status(400).json({ message: "Aucun fichier téléchargé." });
+  }
+
+  // Validation de la mention
+  const validMentions = ['Passable', 'Bien', 'Tres Bien', 'Excellent'];
+  if (mention && !validMentions.includes(mention)) {
+    return res.status(400).json({ message: 'Mention invalide' });
   }
 
   const filePath = req.file.path;
   const fileName = req.file.originalname;
 
   const query = `
-    INSERT INTO memoire (libelle, annee, cycle, speciality, university, description, file_path, file_name, id_etudiant)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO memoire (
+      libelle, annee, cycle, speciality, university, 
+      description, file_path, file_name, id_etudiant, mention
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const values = [
     libelle,
@@ -445,6 +463,7 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
     filePath,
     fileName,
     id_etudiant,
+    mention || null // Ajout de la mention avec valeur par défaut null
   ];
 
   db.query(query, values, (err, result) => {
@@ -465,7 +484,6 @@ app.post("/api/memoire", upload.single("file"), (req, res) => {
         .status(500)
         .json({ message: "Erreur interne du serveur.", error: err });
     }
-
 
     res.status(201).json({ message: "Données soumises avec succès." });
   });
@@ -791,7 +809,7 @@ app.get("/api/memoire", (req, res) => {
 
   let query = `
     SELECT m.id_memoire, m.libelle, m.annee, m.cycle, m.speciality, m.university, 
-           m.file_name, m.file_path, m.status, m.description, m.file_status,
+           m.file_name, m.file_path, m.status, m.description, m.file_status, m.mention,
            e.name AS etudiant_nom
     FROM memoire m
     JOIN etudiant e ON m.id_etudiant = e.id_etudiant
