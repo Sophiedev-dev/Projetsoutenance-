@@ -49,6 +49,25 @@ const Homepage = () => {
     }
   };
 
+  
+  //   if (!query.trim()) {
+  //     setSuggestions([]);
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(query)}`);
+  //     if (!response.ok) {
+  //       throw new Error(`Erreur serveur : ${response.status}`);
+  //     }
+
+  //     const data = await response.json();
+  //     setSuggestions(data.suggestions || []);
+  //   } catch (error) {
+  //     console.error("Erreur lors de la récupération des suggestions :", error);
+  //   }
+  // };
+
   const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
     search = search || "";
     try {
@@ -103,29 +122,31 @@ const Homepage = () => {
     }
   }, [searchTerm]);
 
-  const fetchSuggestions = async (query) => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      return;
-    }
 
-    try {
-      const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        throw new Error(`Erreur serveur : ${response.status}`);
-      }
+  //   fetchSuggestions(value);
 
-      const data = await response.json();
-      setSuggestions(data.suggestions || []);
-    } catch (error) {
-      console.error("Erreur lors de la récupération des suggestions :", error);
-    }
-  };
+  // };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = async (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    fetchSuggestions(value);
+  
+    // Récupérer les suggestions seulement si la valeur n'est pas vide
+    if (value.trim()) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(value)}`);
+        if (!response.ok) {
+          throw new Error(`Erreur serveur : ${response.status}`);
+        }
+        const data = await response.json();
+        setSuggestions(data.suggestions || []);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des suggestions :", error);
+        setSuggestions([]);
+      }
+    } else {
+      setSuggestions([]); // Vider les suggestions si le champ est vide
+    }
   };
 
   const getPdfThumbnail = async (pdfUrl) => {
@@ -153,7 +174,7 @@ const Homepage = () => {
   }, [memoires]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div id ="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -182,7 +203,24 @@ const Homepage = () => {
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-                </motion.div>
+              </motion.div>
+
+              {suggestions.length > 0 && (
+                  <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        onClick={() => {
+                          setSearchTerm(suggestion);
+                          setSuggestions([]);
+                        }}
+                      >
+                        {suggestion}
+                      </div>
+                    ))}
+                  </div>
+               )}
               </div>
             </div>
           </div>
@@ -194,15 +232,15 @@ const Homepage = () => {
               animate={{ opacity: 1, x: 0 }}
             >
               {[
-                { name: 'Accueil', icon: BookOpen },
-                { name: 'Mémoires', icon: GraduationCap },
+                { name: 'Accueil', icon: BookOpen, id: "accueil"},
+                { name: 'Mémoires', icon: GraduationCap, id: "bibliotheque"  },
                 { name: 'Collections', icon: Award }
               ].map((item) => (
                 <motion.a
                   key={item.name}
                   whileHover={{ scale: 1.05 }}
                   className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300"
-                  href="#"
+                  onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
                 >
                   <item.icon size={18} />
                   <span>{item.name}</span>
@@ -284,7 +322,7 @@ const Homepage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div id="bibliotheque" className="max-w-7xl mx-auto px-4 py-16">
         <div className="mb-12">
           <h2 id="current-resumes" className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             Bibliothèque Numérique

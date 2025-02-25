@@ -6,7 +6,8 @@ import {
   Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
   PieChart, TrendingUp, UserCheck, Clock,
   Trash2,
-  ArrowLeft
+  ArrowLeft,
+  LogOut
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -779,8 +780,8 @@ const AdminDashboard = () => {
             href="/"
             className="flex items-center w-full p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
           >
-            <ArrowLeft size={20} className="mr-3" />
-            Retour à l'accueil
+              <LogOut size={20} className="mr-3" />
+              Déconnexion
           </a>
         </div>
       <ToastContainer />
