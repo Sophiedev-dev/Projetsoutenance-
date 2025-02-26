@@ -15,45 +15,56 @@ const Form = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    console.log('Tentative de connexion avec:', { email, password }); // Debug
   
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ email, password }),
+        credentials: 'include' // Ajout pour les cookies
       });
   
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Données de connexion:', data); // Debug log
+      console.log('Réponse du serveur:', response.status); // Debug
   
-        if (data.role === 'admin') {
-          localStorage.setItem('user', JSON.stringify({
+      const data = await response.json();
+      console.log('Données reçues:', data); // Debug
+  
+      if (!response.ok) {
+        setError(data.message || 'Erreur de connexion');
+        return;
+      }
+  
+      if (data.success) {
+        if (data.user.role === 'admin') {
+          const adminData = {
             user: {
-              id_admin: data.user.id_admin,
+              id_admin: data.user.id,
               name: data.user.name,
               email: data.user.email
             },
-            role: data.role
-          }));
+            role: 'admin'
+          };
+          localStorage.setItem('user', JSON.stringify(adminData));
+          console.log('Redirection admin...'); // Debug
           router.push('/adminDashboard');
-        } else if (data.role === 'etudiant') {
+        } else {
           const userData = {
             user: {
-              id_etudiant: data.user.id_etudiant,
+              id_etudiant: data.user.id,
               name: data.user.name,
               email: data.user.email
             },
-            role: data.role
+            role: 'etudiant'
           };
-          
           localStorage.setItem('user', JSON.stringify(userData));
-          console.log('ID étudiant pour navigation:', data.user.id_etudiant);
-          
-          router.push(`/login?id=${data.user.id_etudiant}`);
+          console.log('Redirection étudiant...'); // Debug
+          router.push(`/login?id=${data.user.id}`);
         }
       } else {
-        const data = await response.json();
         setError(data.message || 'Erreur de connexion');
       }
     } catch (err) {
@@ -121,6 +132,9 @@ const Form = () => {
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
+            onClick={(e) => {
+              console.log('Bouton cliqué'); // Debug
+            }}
           >
             Sign in
           </button>

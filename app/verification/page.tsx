@@ -37,7 +37,7 @@ const Form = () => {
     if (email) {
       console.log("Code:", code, "Email:", email);
       try {
-        const response = await fetch("http://localhost:5000/api/etudiant/activate", {
+        const response = await fetch("http://localhost:5000/api/auth/verify-email", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

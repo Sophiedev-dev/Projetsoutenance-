@@ -43,7 +43,11 @@ const Homepage = () => {
         throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
       }
       const data = await response.json();
-      setStats(data);
+      setStats({
+        memoires: data.memoires || 0,
+        chercheurs: data.chercheurs || 0,
+        specialites: data.specialites || 0,
+      });
     } catch (error) {
       console.error("Erreur lors de la récupération des statistiques :", error.message);
     }
@@ -69,43 +73,28 @@ const Homepage = () => {
   // };
 
   const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
-    search = search || "";
     try {
-      let url = `http://localhost:5000/api/memoire?status=${status}`;
-      if (cycle) url += `&cycle=${cycle}`;
-      if (typeof search === "string" && search.trim() !== "") {
-        url += `&search=${encodeURIComponent(search.toLowerCase())}`;
-      }
-      if (sortBy) url += `&sortBy=${sortBy}&sortOrder=${sortOrder}`;
-
-      const response = await fetch(url);
+      let url = new URL('http://localhost:5000/api/memoire/memoire');
+      
+      // Add query parameters
+      const params = new URLSearchParams();
+      if (status) params.append('status', status);
+      if (cycle) params.append('cycle', cycle);
+      if (search) params.append('search', search.toLowerCase());
+      if (sortBy) params.append('sortBy', sortBy);
+      if (sortOrder) params.append('sortOrder', sortOrder);
+      
+      url.search = params.toString();
+  
+      const response = await fetch(url.toString());
       if (!response.ok) {
         throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
       }
-
+  
       const data = await response.json();
-
+  
       if (data && Array.isArray(data.memoire)) {
-        let filteredMemoires = data.memoire.filter(memoire =>
-          Object.values(memoire).some(value =>
-            value && value.toString().toLowerCase().includes(search.toLowerCase())
-          )
-        );
-
-        filteredMemoires.sort((a, b) => {
-          let valueA = a[sortBy];
-          let valueB = b[sortBy];
-
-          if (typeof valueA === "number" && typeof valueB === "number") {
-            return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
-          } else {
-            return sortOrder === "asc"
-              ? valueA?.toString().localeCompare(valueB?.toString())
-              : valueB?.toString().localeCompare(valueA?.toString());
-          }
-        });
-
-        setMemoires(filteredMemoires);
+        setMemoires(data.memoire);
       } else {
         console.error("Format inattendu des données reçues :", data);
       }
@@ -122,7 +111,6 @@ const Homepage = () => {
     }
   }, [searchTerm]);
 
-
   //   fetchSuggestions(value);
 
   // };
@@ -131,21 +119,21 @@ const Homepage = () => {
     const value = e.target.value;
     setSearchTerm(value);
   
-    // Récupérer les suggestions seulement si la valeur n'est pas vide
-    if (value.trim()) {
-      try {
-        const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(value)}`);
-        if (!response.ok) {
-          throw new Error(`Erreur serveur : ${response.status}`);
-        }
-        const data = await response.json();
-        setSuggestions(data.suggestions || []);
-      } catch (error) {
-        console.error("Erreur lors de la récupération des suggestions :", error);
-        setSuggestions([]);
+    if (!value.trim()) {
+      setSuggestions([]);
+      return;
+    }
+  
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/memoire/suggestions?q=${encodeURIComponent(value)}`);
+      if (!response.ok) {
+        throw new Error(`Erreur serveur : ${response.status}`);
       }
-    } else {
-      setSuggestions([]); // Vider les suggestions si le champ est vide
+      const data = await response.json();
+      setSuggestions(data);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des suggestions :", error);
+      setSuggestions([]);
     }
   };
 

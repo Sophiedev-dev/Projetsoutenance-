@@ -26,36 +26,39 @@ function App() {
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      fetchMemoires();
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      fetchMemoires(userData.user.id_etudiant);
     }
   }, []);
 
-  const fetchMemoires = async () => {
+  const fetchMemoires = async (userId: string) => {
     try {
-      const storedUser = localStorage.getItem('user');
-      const parsedUser = storedUser ? JSON.parse(storedUser) : null;
-      const userId = parsedUser?.user?.id_etudiant;
-      
       if (!userId) {
-        console.error("No user found or missing student ID");
+        console.error("ID étudiant manquant");
         return;
       }
   
-      const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${userId}`);
+      const response = await fetch(`http://localhost:5000/api/memoire/etudiant/${userId}`);
+      
       if (!response.ok) {
-        throw new Error(`Server error (${response.status}): ${await response.text()}`);
+        throw new Error(`Erreur serveur (${response.status})`);
       }
   
       const data = await response.json();
+      
+      // Handle both response formats (array or object with memoire property)
       if (Array.isArray(data)) {
         setMemoires(data);
+      } else if (data && data.success && Array.isArray(data.memoire)) {
+        setMemoires(data.memoire);
       } else {
-        console.error('Unexpected data format:', data);
+        console.error('Format de données inattendu:', data);
+        setMemoires([]);
       }
     } catch (error) {
-      console.error('Error fetching memoires:', error);
-      toast.error('Error loading your submissions');
+      console.error('Erreur lors de la récupération des mémoires:', error);
+      setMemoires([]);
     }
   };
 
@@ -77,49 +80,76 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!newMemoire.file) {
-      toast.error('Please select a PDF file');
+      toast.error('Veuillez sélectionner un fichier PDF');
       return;
     }
-
+  
     setIsSubmitting(true);
-    const storedUser = localStorage.getItem('user');
-    const user = storedUser ? JSON.parse(storedUser) : null;
-
-    const formData = new FormData();
-    Object.entries(newMemoire).forEach(([key, value]) => {
-      if (value !== null) formData.append(key, value);
-    });
-    formData.append('id_etudiant', user.user.id_etudiant);
-    formData.append('status', 'pending');
-
+    
     try {
-      const response = await fetch('http://localhost:5000/api/memoire', {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+  
+      const userData = JSON.parse(storedUser);
+      const formData = new FormData();
+      formData.append('libelle', newMemoire.libelle);
+      formData.append('annee', newMemoire.annee);
+      formData.append('cycle', newMemoire.cycle);
+      formData.append('speciality', newMemoire.speciality);
+      formData.append('university', newMemoire.university);
+      formData.append('description', newMemoire.description);
+      formData.append('mention', newMemoire.mention);
+      formData.append('file', newMemoire.file);
+      formData.append('id_etudiant', userData.user.id_etudiant);
+      formData.append('status', 'pending');
+  
+      const response = await fetch('http://localhost:5000/api/memoire/memoire', {
         method: 'POST',
         body: formData,
       });
-
-      if (response.ok) {
-        toast.success('Thesis submitted successfully! The administrator will be notified.');
-        setShowForm(false);
-        fetchMemoires();
-        setNewMemoire({
-          libelle: '',
-          annee: new Date().getFullYear().toString(),
-          cycle: 'Bachelor',
-          speciality: '',
-          university: '',
-          description: '',
-          mention:'',
-          file: null,
-        });
-        setFilePreview(null);
-      } else {
-        throw new Error('Submission failed');
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'Erreur lors de la soumission'
+        }));
+        throw new Error(errorData.message || 'Erreur lors de la soumission');
       }
+  
+      const data = await response.json().catch(() => ({
+        success: true,
+        message: 'Mémoire soumis avec succès'
+      }));
+  
+      toast.success(data.message || 'Mémoire soumis avec succès!');
+      setShowForm(false);
+      
+      if (userData.user && userData.user.id_etudiant) {
+        fetchMemoires(userData.user.id_etudiant);
+      } else {
+        console.error('ID étudiant manquant');
+        toast.error('Erreur lors du rafraîchissement des données');
+      }
+      
+      setNewMemoire({
+        libelle: '',
+        annee: new Date().getFullYear().toString(),
+        cycle: 'Bachelor',
+        speciality: '',
+        university: '',
+        description: '',
+        mention: '',
+        file: null,
+      });
+      setFilePreview(null);
+  
     } catch (error) {
       console.error('Submission error:', error);
-      toast.error('Error submitting thesis');
+      toast.error(error instanceof Error ? error.message : 'Une erreur inattendue est survenue');
     } finally {
       setIsSubmitting(false);
     }
@@ -127,22 +157,34 @@ function App() {
 
   const handleDeleteMemoire = async (memoireId: string) => {
     try {
-      const confirmed = window.confirm('Are you sure you want to delete this thesis?');
+      const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
       if (!confirmed) return;
-
+  
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-
+  
+      const data = await response.json();
+  
       if (!response.ok) {
-        throw new Error('Error deleting thesis');
+        throw new Error(data.message || 'Erreur lors de la suppression');
       }
-
-      toast.success('Thesis deleted successfully');
-      fetchMemoires();
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Error deleting thesis');
+  
+      if (data.success) {
+        toast.success('Mémoire supprimé avec succès');
+        // Refresh the memoires list
+        if (user?.user?.id_etudiant) {
+          await fetchMemoires(user.user.id_etudiant);
+        }
+      } else {
+        throw new Error(data.message || 'Erreur lors de la suppression');
+      }
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error(error.message || 'Erreur lors de la suppression du mémoire');
     }
   };
 
@@ -173,22 +215,22 @@ function App() {
     memoire.speciality.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const MentionStars = ({ mention }) => {
-    const stars = {
-      'Passable': 1,
-      'Bien': 2,
-      'Tres Bien': 3,
-      'Excellent': 4
-    };
+  // const MentionStars = ({ mention }) => {
+  //   const stars = {
+  //     'Passable': 1,
+  //     'Bien': 2,
+  //     'Tres Bien': 3,
+  //     'Excellent': 4
+  //   };
 
-    return (
-      <div className="flex items-center">
-        {[...Array(stars[mention] || 0)].map((_, index) => (
-          <Star key={index} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-        ))}
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="flex items-center">
+  //       {[...Array(stars[mention] || 0)].map((_, index) => (
+  //         <Star key={index} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+  //       ))}
+  //     </div>
+  //   );
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
@@ -321,23 +363,23 @@ function App() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Mention
+                       Mention
                     </label>
                     <select
-                      name="mention"
-                      value={newMemoire.mention}
-                      onChange={(e) => setNewMemoire(prev => ({ ...prev, mention: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                      required
-                    >
-                      <option value="">Sélectionnez une mention</option>
-                      <option value="Passable"> ⭐</option>
-                      <option value="Bien"> ⭐⭐</option>
-                      <option value="Tres Bien"> ⭐⭐⭐</option>
-                      <option value="Excellent"> ⭐⭐⭐⭐</option>
+                          name="mention"
+                          value={newMemoire.mention}
+                          onChange={(e) => setNewMemoire(prev => ({ ...prev, mention: e.target.value }))}
+                          className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          required
+                        >
+                          <option value="">Sélectionnez une mention</option>
+                          <option value="Passable">Passable</option>
+                          <option value="Bien">Bien</option>
+                          <option value="Tres Bien">Tres Bien</option>
+                          <option value="Excellent">Excellent</option>
                     </select>
                   </div>
-                </div>
+                 </div>
 
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -436,12 +478,9 @@ function App() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <MentionStars mention={memoire.mention} />
-                        <span className="ml-2 text-sm text-gray-600">
+                        <span className="text-sm text-gray-600">
                           {memoire.mention || 'Non noté'}
                         </span>
-                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex space-x-2">

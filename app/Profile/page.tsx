@@ -46,7 +46,7 @@ const Profile = () => {
 
   const fetchMemoires = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${userId}`);
+      const response = await fetch(`http://localhost:5000/api/memoire/etudiant/${userId}`);
       if (!response.ok) throw new Error('Failed to fetch theses');
       const data = await response.json();
       setMemoires(data);

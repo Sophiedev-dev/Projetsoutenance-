@@ -29,28 +29,40 @@ const Form = () => {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/etudiant', {
+      console.log("Envoi des données:", formData); // Pour déboguer
+
+      const response = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(formData)
       });
 
-      if (response.ok) {
-        alert('Étudiant ajouté avec succès !');
-        setName('');
-        setSurname('');
-        setEmail('');
-        setPassword('');
-        setConfPassword('');
-        console.log("Redirection avec email:", email);  // Ajout de log pour vérifier l'email
-        router.push(`/verification?email=${encodeURIComponent(email)}`);
-      } else {
-        const errorData = await response.json();
-        alert(`Erreur : ${errorData.message}`);
+      // Vérifier le type de contenu de la réponse
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new TypeError("La réponse n'est pas au format JSON!");
       }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erreur lors de l\'inscription');
+      }
+
+      alert('Inscription réussie !');
+      setName('');
+      setSurname('');
+      setEmail('');
+      setPassword('');
+      setConfPassword('');
+      router.push(`/verification?email=${encodeURIComponent(email)}`);
+
     } catch (error) {
-      console.error("Erreur lors de l'ajout :", error);
-      alert("Erreur de connexion au serveur.");
+      console.error("Erreur:", error);
+      alert(error.message || "Erreur de connexion au serveur");
     }
   };
 

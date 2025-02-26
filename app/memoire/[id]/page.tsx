@@ -38,22 +38,21 @@ const MemoirePage = () => {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
   
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("La réponse n'est pas du JSON valide");
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Erreur lors de la récupération du mémoire');
       }
   
-      const data = await response.json();
       setMemoire(data.memoire);
     } catch (error) {
       console.error('Erreur lors de la récupération du mémoire:', error);
-      setMemoire(null); // Pour éviter d'afficher du contenu erroné
+      setMemoire(null);
     } finally {
       setLoading(false);
     }
   };
   
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

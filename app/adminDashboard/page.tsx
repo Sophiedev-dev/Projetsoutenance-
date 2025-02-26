@@ -14,7 +14,6 @@ import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
 import SignatureVerification from '../components/SignatureVerification';
-import { MentionStars } from '../components/MentionStars';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -86,19 +85,33 @@ const AdminDashboard = () => {
 
   const fetchMemoires = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/memoire');
+      const response = await fetch('http://localhost:5000/api/memoire/memoires-with-students', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+  
       if (!response.ok) {
         throw new Error(`Erreur HTTP : ${response.status}`);
       }
       const data = await response.json();
-      if (Array.isArray(data.memoire)) {
-        setMemoires(data.memoire);
+      
+      // Check if data has the memoire property
+      if (data.success && data.memoire) {
+        const memoiresWithStudents = data.memoire.map(memoire => ({
+          ...memoire,
+          etudiant_nom: memoire.etudiant_nom || 'N/A'
+        }));
+        setMemoires(memoiresWithStudents);
       } else {
-        console.error('La réponse n\'est pas un tableau:', data);
+        console.error('Format de réponse invalide:', data);
+        setMemoires([]);
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des mémoires', error);
       toast.error('Erreur lors de la récupération des mémoires');
+      setMemoires([]);
     }
   };
 
@@ -327,65 +340,59 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteMemoire = async (memoireId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?')) {
-      return;
-    }
-
+  const handleDeleteMemoire = async (memoireId: string) => {
     try {
+      const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
+      if (!confirmed) return;
+  
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-
+  
+      const data = await response.json();
+  
       if (!response.ok) {
-        throw new Error('Erreur lors de la suppression');
+        throw new Error(data.message || 'Erreur lors de la suppression');
       }
-
-      toast.success('Mémoire supprimé avec succès');
-      fetchMemoires();
-      fetchStats();
+  
+      if (data.success) {
+        toast.success('Mémoire supprimé avec succès');
+        fetchMemoires();
+        fetchDashboardStats();
+        fetchStats();
+      } else {
+        throw new Error(data.message || 'Erreur lors de la suppression');
+      }
     } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la suppression');
+      console.error('Erreur lors de la suppression:', error);
+      toast.error(error.message || 'Erreur lors de la suppression du mémoire');
     }
   };
 
   const handleValidation = async (memoireId: number) => {
     try {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        toast.error('Session administrateur non trouvée');
-        return;
-      }
-
-      const userData = JSON.parse(userStr);
-      const id_admin = userData.user?.id_admin;
-
-      if (!id_admin) {
-        toast.error('ID administrateur non trouvé');
-        return;
-      }
-
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          status: 'validated',
-          id_admin: id_admin
+          status: 'validated'  // Only send the status update
         })
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la validation');
       }
-
+  
       const data = await response.json();
       toast.success(data.message || 'Mémoire validé avec succès');
       fetchMemoires();
-      fetchDashboardStats(); // Mettre à jour les statistiques du tableau de bord
+      fetchDashboardStats();
     } catch (error) {
       console.error('Erreur détaillée:', error);
       toast.error(error.message || 'Erreur lors de la validation');
@@ -470,8 +477,6 @@ const AdminDashboard = () => {
 </div>
 </div>
   );
-
-  
 
   // Le StatCard reste inchangé
   const StatCard = ({ title, value, icon, color }) => (
@@ -580,14 +585,10 @@ const AdminDashboard = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-                    {memoire.mention ? (
-                    <MentionStars mention={memoire.mention} size="sm" />
-                    ) : (
-                      <span className="text-sm text-gray-500">Non noté</span>
-                    )}      
-                    </span>
-                  </td>
+                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                        {memoire.mention || 'Non noté'}
+                      </span>
+                    </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={memoire.status} />
                   </td>
