@@ -372,30 +372,28 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleValidation = async (memoireId: number) => {
+  const handleValidateMemoire = async (memoireId) => {
     try {
+      const adminId = 1; // Get this from your auth context or state
       const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          status: 'validated'  // Only send the status update
-        })
+        body: JSON.stringify({ adminId })
       });
   
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la validation');
-      }
-  
       const data = await response.json();
-      toast.success(data.message || 'Mémoire validé avec succès');
-      fetchMemoires();
-      fetchDashboardStats();
+      
+      if (data.success) {
+        toast.success('Mémoire validé et signé avec succès');
+        fetchMemoires(); // Refresh the list
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
-      console.error('Erreur détaillée:', error);
-      toast.error(error.message || 'Erreur lors de la validation');
+      console.error('Error validating memoire:', error);
+      toast.error('Erreur lors de la validation du mémoire');
     }
   };
 
@@ -604,7 +602,7 @@ const AdminDashboard = () => {
                       {memoire.status === 'pending' && (
                         <>
                           <button
-                            onClick={() => handleValidation(memoire.id_memoire)}
+                            onClick={() => handleValidateMemoire(memoire.id_memoire)}
                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                             title="Valider"
                           >

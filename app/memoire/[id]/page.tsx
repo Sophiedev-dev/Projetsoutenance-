@@ -18,6 +18,7 @@ import {
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { MentionStars } from '@/app/components/MentionStars';
+import ValidationBadge from '@/app/components/ValidationBadge';
 
 const MemoirePage = () => {
   const router = useRouter();
@@ -30,28 +31,26 @@ const MemoirePage = () => {
     fetchMemoireDetails();
   }, [params.id]);
 
-  const fetchMemoireDetails = async () => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/memoire/${params.id}`);
-  
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-  
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Erreur lors de la récupération du mémoire');
-      }
-  
-      setMemoire(data.memoire);
-    } catch (error) {
-      console.error('Erreur lors de la récupération du mémoire:', error);
-      setMemoire(null);
-    } finally {
+// Dans votre composant principal
+const fetchMemoireDetails = async () => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/memoire/${params.id}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      console.log('Memoire data:', data.memoire); // Debug log
+      setMemoire({
+        ...data.memoire,
+        validated_by_name: data.memoire.admin_name,
+        validation_date: data.memoire.validation_date
+      });
       setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des détails du mémoire:', error);
+    setLoading(false);
+  }
+};
   
   if (loading) {
     return (
@@ -110,6 +109,12 @@ const MemoirePage = () => {
 
       {/* En-tête du mémoire */}
       <div className="pt-20 pb-8 bg-white shadow-sm">
+      {memoire.status === 'validated' && memoire.validated_by_name && (
+    <ValidationBadge 
+      adminName={memoire.validated_by_name}
+      validationDate={memoire.validation_date ? new Date(memoire.validation_date).toLocaleDateString('fr-FR') : undefined}
+    />
+  )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{memoire.libelle}</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
