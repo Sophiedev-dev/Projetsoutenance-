@@ -20,6 +20,9 @@
     "bcrypt": "^5.1.1",
     "crypto": "^1.0.1",
     "framer-motion": "^11.18.1",
+    "jspdf": "^3.0.0",
+    "jspdf-autotable": "^5.0.2",
+    "natural": "^8.0.1",
     "next": "^15.1.5",
     "node-signpdf": "^3.0.0",
     "nodemailer": "^6.10.0",
@@ -31,6 +34,7 @@
     "react-pdf": "^9.2.1",
     "react-router-dom": "^7.1.1",
     "react-toastify": "^11.0.3",
+    "stopword": "^3.1.4",
     "styled-components": "^6.1.14"
   },
   "devDependencies": {

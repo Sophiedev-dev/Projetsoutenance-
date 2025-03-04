@@ -14,6 +14,9 @@ import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
 import SignatureVerification from '../components/SignatureVerification';
+import MemoireDetailView from '../components/MemoireDetailView';
+import SimilarityThresholdConfig from '../components/SimilarityThresholdConfig';
+
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -27,6 +30,8 @@ const AdminDashboard = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [filterCycle, setFilterCycle] = useState('all');
   const [filterSpeciality, setFilterSpeciality] = useState('all');
+  const [showMemoireDetail, setShowMemoireDetail] = useState(false);
+  const [selectedMemoireDetail, setSelectedMemoireDetail] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     validated: 0,
@@ -330,6 +335,8 @@ const AdminDashboard = () => {
       }
 
       toast.success('Mémoire rejeté avec succès');
+      setShowMemoireDetail(false);
+      setSelectedMemoireDetail(null);
       setRejectionReason('');
       setSelectedMemoire(null);
       fetchMemoires();
@@ -387,6 +394,8 @@ const AdminDashboard = () => {
       
       if (data.success) {
         toast.success('Mémoire validé et signé avec succès');
+        setShowMemoireDetail(false);
+        setSelectedMemoireDetail(null);
         fetchMemoires(); // Refresh the list
       } else {
         toast.error(data.message);
@@ -489,7 +498,34 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const renderSettings = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Paramètres du système</h2>
+      <SimilarityThresholdConfig />
+    </motion.div>
+  );
+
   const renderMemoires = () => {
+
+        // If a mémoire is selected for detailed view, show the detail component
+        if (showMemoireDetail && selectedMemoireDetail) {
+          return (
+            <MemoireDetailView 
+              memoire={selectedMemoireDetail}
+              onBack={() => {
+                setShowMemoireDetail(false);
+                setSelectedMemoireDetail(null);
+              }}
+              onValidate={handleValidateMemoire}
+              onReject={handleRejection}
+            />
+          );
+        }
+
     const filteredMemoires = memoires.filter(memoire => {
       const matchesSearch = memoire.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           memoire.etudiant_nom?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -565,7 +601,13 @@ const AdminDashboard = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredMemoires.map((memoire) => (
-                <tr key={memoire.id_memoire} className="hover:bg-gray-50">
+                <tr key={memoire.id_memoire}
+                 className="hover:bg-gray-50"
+                 onClick={() => {
+                  setSelectedMemoireDetail(memoire);
+                  setShowMemoireDetail(true);
+                }}
+                 >
                   <td className="px-6 py-4">{memoire.etudiant_nom}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center">
@@ -765,13 +807,9 @@ const AdminDashboard = () => {
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'memoires' && renderMemoires()}
           {activeTab === 'users' && renderUsers()}
-          {activeTab === 'settings' && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Paramètres</h2>
-              <p>Configuration du système...</p>
-            </div>
-          )}
+          {activeTab === 'settings' && renderSettings()}
           {activeTab === 'trash' && <TrashContent />}
+
         </motion.div>
       </div>
       <div className="p-6 border-t border-gray-100">

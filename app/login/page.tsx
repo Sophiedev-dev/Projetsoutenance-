@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, FileText, Upload, X, CheckCircle, AlertCircle, Clock, Trash, Download, Star } from 'lucide-react';
+import { Bell, FileText, Upload, X, CheckCircle, AlertCircle, Clock, Trash, Download, Star, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import MySideBar from './ui/sideBar';
+import PreUploadChecker from '../components/PreUploadChecker';
+import SimilarityReport from '../components/SimilarityReport';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -12,6 +14,9 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [similarityData, setSimilarityData] = useState(null);
+  const [selectedMemoire, setSelectedMemoire] = useState(null);
+  const [showSimilarityReport, setShowSimilarityReport] = useState(false);
   const [newMemoire, setNewMemoire] = useState({
     libelle: '',
     annee: new Date().getFullYear().toString(),
@@ -62,6 +67,80 @@ function App() {
     }
   };
 
+  const fetchSimilarityReport = async (memoireId) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/similarity`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.info("No similarity report available for this thesis");
+          return null;
+        }
+        throw new Error(`Server error (${response.status})`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching similarity report:', error);
+      toast.error('Failed to load similarity report');
+      return null;
+    }
+  };
+
+  const handleViewSimilarityReport = async (memoire) => {
+    try {
+      setSelectedMemoire(memoire);
+      const report = await fetchSimilarityReport(memoire.id_memoire);
+      
+      if (report && report.success) {
+        const processedData = {
+          memoireInfo: {
+            id: memoire.id_memoire,
+            title: memoire.libelle,
+            author: memoire.author || 'Unknown',
+            submissionDate: memoire.date_soumission
+          },
+          percentage: report.percentage || 0,
+          status: {
+            level: report.level || 'info',
+            percentage: report.percentage || 0
+          },
+          results: Array.isArray(report.results) ? report.results.map(item => ({
+            id_memoire: item.id_memoire,
+            title: item.libelle || 'Untitled',
+            similarity: parseFloat(item.similarity) || 0,
+            author: item.author || 'Unknown',
+            submissionDate: item.date_soumission,
+            university: item.university || 'Unknown',
+            cycle: item.cycle || 'Unknown'
+          })).filter(item => item.id_memoire !== memoire.id_memoire) : [] // Exclure le mémoire actuel
+        };
+  
+        setSimilarityData(processedData);
+        setShowSimilarityReport(true);
+  
+        const similarityLevel = processedData.percentage;
+        if (typeof similarityLevel === 'number') {
+          if (similarityLevel > 75) {
+            toast.error(`Similarité élevée pour "${memoire.libelle}": ${similarityLevel}%`);
+          } else if (similarityLevel > 50) {
+            toast.warning(`Similarité modérée pour "${memoire.libelle}": ${similarityLevel}%`);
+          } else {
+            toast.success(`Faible similarité pour "${memoire.libelle}": ${similarityLevel}%`);
+          }
+        }
+      } else {
+        toast.info(`Aucun rapport de similarité disponible pour "${memoire.libelle}"`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du rapport:', error);
+      toast.error(`Erreur lors du chargement du rapport pour "${memoire.libelle}"`);
+      setSimilarityData(null);
+      setShowSimilarityReport(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -78,8 +157,27 @@ function App() {
     }
   };
 
+  const handleSimilarityResult = (data) => {
+    setSimilarityData(data);
+    
+    // Show toast based on similarity level
+    if (data.status.level === 'danger') {
+      toast.error(`High similarity detected: ${data.status.percentage.toFixed(1)}%`);
+    } else if (data.status.level === 'warning') {
+      toast.warning(`Moderate similarity detected: ${data.status.percentage.toFixed(1)}%`);
+    } else {
+      toast.success(`Low similarity detected: ${data.status.percentage.toFixed(1)}%`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+      // Check if similarity data exists and exceeds danger threshold
+    if (similarityData?.status?.level === 'danger') {
+      toast.error(`Soumission impossible : Le taux de similarité (${similarityData.status.percentage}%) dépasse le seuil autorisé (${similarityData.status.similarity_danger_threshold}%)`);
+      return;
+    }
     
     if (!newMemoire.file) {
       toast.error('Veuillez sélectionner un fichier PDF');
@@ -146,6 +244,7 @@ function App() {
         file: null,
       });
       setFilePreview(null);
+      setSimilarityData(null);
   
     } catch (error) {
       console.error('Submission error:', error);
@@ -215,23 +314,6 @@ function App() {
     memoire.speciality.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // const MentionStars = ({ mention }) => {
-  //   const stars = {
-  //     'Passable': 1,
-  //     'Bien': 2,
-  //     'Tres Bien': 3,
-  //     'Excellent': 4
-  //   };
-
-  //   return (
-  //     <div className="flex items-center">
-  //       {[...Array(stars[mention] || 0)].map((_, index) => (
-  //         <Star key={index} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-  //       ))}
-  //     </div>
-  //   );
-  // };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       <MySideBar />
@@ -264,6 +346,9 @@ function App() {
                   <X size={24} />
                 </button>
               </div>
+
+              {/* Add Pre-upload similarity checker */}
+              <PreUploadChecker onSimilarityResult={handleSimilarityResult} />
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
@@ -402,7 +487,11 @@ function App() {
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
-                      <p className="text-xs text-gray-500">PDF up to 10MB</p>
+                      <p className="text-xs text-gray-500">
+                        PDF up to 10MB
+                        <br />
+                        <span className="text-blue-500">Your thesis will be automatically analyzed for similarity</span>
+                      </p>
                     </div>
                   </div>
                   {filePreview && (
@@ -422,13 +511,52 @@ function App() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (similarityData && similarityData.status.level === 'danger')}
                     className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200 disabled:opacity-50"
                   >
                     {isSubmitting ? 'Submitting...' : 'Submit Thesis'}
                   </button>
                 </div>
+                
+                {similarityData && similarityData.status.level === 'danger' && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span>High similarity detected - Please revise your thesis before submission</span>
+                    </div>
+                  </div>
+                )}
               </form>
+            </div>
+          </div>
+        )}
+        
+        {/* Show similarity report modal */}
+        {showSimilarityReport && selectedMemoire && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Similarity Report: {selectedMemoire.libelle}
+                </h3>
+                <button
+                  onClick={() => setShowSimilarityReport(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <SimilarityReport similarityData={similarityData} />
+              
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowSimilarityReport(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -488,18 +616,25 @@ function App() {
                           href={`http://localhost:5000/${memoire.file_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-1.5 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors duration-200"
-                          title="Visualiser"
-                          >
-                            <Download size={20} />
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Download"
+                        >
+                          <Download size={20} />
                         </a>
+                        <button
+                          onClick={() => handleViewSimilarityReport(memoire)}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="View Similarity Report"
+                        >
+                          <AlertCircle size={20} />
+                        </button>
                         <button
                           onClick={() => handleDeleteMemoire(memoire.id_memoire)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer"
-                         >
-                            <Trash size={20} />
-                         </button>
+                          title="Delete"
+                        >
+                          <Trash size={20} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -514,4 +649,3 @@ function App() {
 }
 
 export default App;
-
