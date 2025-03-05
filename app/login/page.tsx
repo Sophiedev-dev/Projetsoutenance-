@@ -95,47 +95,45 @@ function App() {
       
       if (report && report.success) {
         const processedData = {
-          memoireInfo: {
-            id: memoire.id_memoire,
-            title: memoire.libelle,
-            author: memoire.author || 'Unknown',
-            submissionDate: memoire.date_soumission
-          },
-          percentage: report.percentage || 0,
           status: {
             level: report.level || 'info',
-            percentage: report.percentage || 0
+            percentage: report.percentage || 0,
+            similarity_warning_threshold: report.similarity_warning_threshold || 0,
+            similarity_danger_threshold: report.similarity_danger_threshold || 0,
+            color: report.level === 'danger' ? 'red' : 
+                   report.level === 'warning' ? 'orange' : 'green',
+            message: report.message || ''
           },
           results: Array.isArray(report.results) ? report.results.map(item => ({
             id_memoire: item.id_memoire,
-            title: item.libelle || 'Untitled',
+            title: item.libelle,
+            name: item.libelle,
             similarity: parseFloat(item.similarity) || 0,
-            author: item.author || 'Unknown',
+            author: item.nom_etudiant || 'Non spécifié',
             submissionDate: item.date_soumission,
-            university: item.university || 'Unknown',
-            cycle: item.cycle || 'Unknown'
-          })).filter(item => item.id_memoire !== memoire.id_memoire) : [] // Exclure le mémoire actuel
+            university: item.university,
+            cycle: item.cycle
+          })) : []
         };
   
         setSimilarityData(processedData);
         setShowSimilarityReport(true);
   
-        const similarityLevel = processedData.percentage;
-        if (typeof similarityLevel === 'number') {
-          if (similarityLevel > 75) {
-            toast.error(`Similarité élevée pour "${memoire.libelle}": ${similarityLevel}%`);
-          } else if (similarityLevel > 50) {
-            toast.warning(`Similarité modérée pour "${memoire.libelle}": ${similarityLevel}%`);
-          } else {
-            toast.success(`Faible similarité pour "${memoire.libelle}": ${similarityLevel}%`);
-          }
+        // Notification avec les seuils de l'administrateur
+        const similarityLevel = processedData.status.percentage;
+        if (similarityLevel >= processedData.status.similarity_danger_threshold) {
+          toast.error(`Similarité élevée: ${similarityLevel}%`);
+        } else if (similarityLevel >= processedData.status.similarity_warning_threshold) {
+          toast.warning(`Similarité modérée: ${similarityLevel}%`);
+        } else {
+          toast.success(`Faible similarité: ${similarityLevel}%`);
         }
       } else {
-        toast.info(`Aucun rapport de similarité disponible pour "${memoire.libelle}"`);
+        toast.info(`Aucun rapport disponible pour "${memoire.libelle}"`);
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération du rapport:', error);
-      toast.error(`Erreur lors du chargement du rapport pour "${memoire.libelle}"`);
+      console.error('Erreur:', error);
+      toast.error('Erreur lors du chargement du rapport');
       setSimilarityData(null);
       setShowSimilarityReport(false);
     }
