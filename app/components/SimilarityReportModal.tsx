@@ -3,18 +3,28 @@ import { X, AlertCircle, AlertTriangle, CheckCircle, Download } from 'lucide-rea
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+// Update the interface to include commonPhrases
+interface SimilarityMatch {
+  sourceText: string;
+  targetText: string;
+  similarity: number;
+  sourcePage?: number;
+  targetPage?: number;
+  matchingPhrases?: Array<{
+    text: string;
+    sourceIndex: number;
+    targetIndex: number;
+  }>;
+}
+
 interface SimilarityReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   similarityData: {
-    sourceText: string;
-    targetText: string;
     similarity: number;
-    matches: Array<{
-      sourceText: string;
-      targetText: string;
-      similarity: number;
-    }>;
+    matches: Array<SimilarityMatch>;
+    targetMemoireTitle: string;
+    sourceMemoireTitle: string;
   };
   documentTitle: string;
 }
@@ -33,7 +43,7 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
     if (similarity >= 50) return <AlertTriangle className="w-6 h-6 text-orange-500" />;
     return <CheckCircle className="w-6 h-6 text-green-500" />;
   };
-
+  // Update the PDF generation to include page numbers
   const downloadReport = () => {
     const doc = new jsPDF();
     
@@ -64,7 +74,13 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
       }
       
       doc.setFontSize(12);
-      doc.text(`Extrait ${index + 1} (${match.similarity.toFixed(1)}% de similarité)`, 20, yPosition);
+      doc.text(
+        `Extrait ${index + 1} (${match.similarity.toFixed(1)}% de similarité)` +
+        `${match.sourcePage ? ` - Source: Page ${match.sourcePage}` : ''}` +
+        `${match.targetPage ? ` - Cible: Page ${match.targetPage}` : ''}`,
+        20, 
+        yPosition
+      );
       
       doc.setFontSize(10);
       const sourceLines = doc.splitTextToSize(`Source: ${match.sourceText}`, 170);
@@ -136,26 +152,52 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
             {/* Extraits similaires */}
             <div>
               <h3 className="text-lg font-semibold mb-3">Extraits similaires</h3>
-              {similarityData.matches.map((match, index) => (
-                <div key={index} className="mb-4 border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 p-3 border-b">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Extrait {index + 1}</span>
-                      <span className={`${getStatusColor(match.similarity)}`}>
-                        {match.similarity.toFixed(1)}% de similarité
-                      </span>
+              {similarityData.matches && similarityData.matches.length > 0 ? (
+                similarityData.matches.map((match, index) => (
+                  <div key={index} className="mb-6 border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 p-3 border-b">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Extrait {index + 1}</span>
+                        <span className={`${getStatusColor(match.similarity)}`}>
+                          {match.similarity.toFixed(1)}% de similarité
+                        </span>
+                      </div>
                     </div>
+                    <div className="grid grid-cols-2 divide-x">
+                      <div className="p-4">
+                        <h5 className="text-xs uppercase text-gray-500 mb-2">
+                          Source: {similarityData.sourceMemoireTitle}
+                        </h5>
+                        <p className="text-sm text-gray-600 italic whitespace-pre-wrap bg-yellow-50 p-2 rounded">
+                          {match.sourceText}
+                        </p>
+                      </div>
+                      <div className="p-4">
+                        <h5 className="text-xs uppercase text-gray-500 mb-2">
+                          Cible: {similarityData.targetMemoireTitle}
+                        </h5>
+                        <p className="text-sm text-gray-600 italic whitespace-pre-wrap bg-yellow-50 p-2 rounded">
+                          {match.targetText}
+                        </p>
+                      </div>
+                    </div>
+                    {match.matchingPhrases && match.matchingPhrases.length > 0 && (
+                      <div className="bg-green-50 p-3 border-t">
+                        <h6 className="text-xs uppercase text-gray-500 mb-2">Phrases identiques trouvées</h6>
+                        <ul className="list-disc list-inside space-y-1">
+                          {match.matchingPhrases.map((phrase, i) => (
+                            <li key={i} className="text-sm text-gray-800">"{phrase.text}"</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 divide-x">
-                    <div className="p-4">
-                      <p className="text-sm text-gray-600 italic">{match.sourceText}</p>
-                    </div>
-                    <div className="p-4">
-                      <p className="text-sm text-gray-600 italic">{match.targetText}</p>
-                    </div>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  Aucun extrait similaire trouvé entre les documents
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

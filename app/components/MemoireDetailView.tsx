@@ -96,38 +96,55 @@ const fetchSimilarityData = async (memoireId) => {
 
 // Add function to fetch detailed similarity data
 const fetchDetailedSimilarityData = async (itemId, similarItem) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`);
-      
-      if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des détails');
-      }
-  
-      const data = await response.json();
-      
-      if (data.success) {
-        setDetailedSimilarityData({
-          ...data.details,
-          similarity: similarItem.similarity, // Utiliser le taux de similarité spécifique
-          sourceMemoireTitle: memoire.libelle,
-          targetMemoireTitle: similarItem.name || similarItem.libelle,
-          matches: data.details.matches.map(match => ({
-            ...match,
-            similarity: parseFloat((match.similarity).toFixed(2))
-          }))
-        });
-        setShowSimilarityReport(true);
-      } else {
-        throw new Error(data.message || 'Erreur lors de la récupération des détails');
-      }
-    } catch (error) {
-      console.error('Error fetching detailed similarity data:', error);
-      toast.error('Erreur lors de la récupération des détails de similarité');
-    } finally {
-      setIsLoading(false);
+  try {
+    setIsLoading(true);
+    // Fix the API endpoint path to match the backend route
+    const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erreur lors de la récupération des détails');
     }
-  };
+
+    const data = await response.json();
+    console.log("Detailed similarity data:", data); // Debug log
+    
+    if (data.success) {
+      // Transform the data to include matched text passages
+      const formattedData = {
+        sourceText: data.details.sourceText,
+        targetText: data.details.targetText,
+        similarity: similarItem.similarity,
+        sourceMemoireTitle: memoire.libelle,
+        targetMemoireTitle: similarItem.name || similarItem.libelle,
+        matches: data.details.matches.map(match => ({
+          sourceText: match.sourceText,
+          targetText: match.targetText,
+          similarity: parseFloat(match.similarity.toFixed(2)),
+          sourcePage: match.sourcePage,
+          targetPage: match.targetPage,
+          commonPhrases: match.commonPhrases || [] // Add common phrases if available
+        }))
+      };
+      
+      setDetailedSimilarityData(formattedData);
+      setShowSimilarityReport(true);
+    } else {
+      throw new Error(data.message || 'Erreur lors de la récupération des détails');
+    }
+  } catch (error) {
+    console.error('Error fetching detailed similarity data:', error);
+    toast.error('Erreur lors de la récupération des détails de similarité');
+  } finally {
+    setIsLoading(false);
+  }
+};
   
   const handleReject = () => {
     if (!rejectionReason) {
