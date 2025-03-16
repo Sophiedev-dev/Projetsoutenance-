@@ -94,6 +94,7 @@ const fetchSimilarityData = async (memoireId) => {
     }
   };
 
+
 // Add function to fetch detailed similarity data
 const fetchDetailedSimilarityData = async (itemId, similarItem) => {
   try {
@@ -341,7 +342,7 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
       </div>
 
       {/* Action buttons */}
-      {memoire.status === 'pending' && (
+      {/* {memoire.status === 'pending' && (
         <div className="mt-8 flex justify-end space-x-4">
           <button
             onClick={() => setShowRejectModal(true)}
@@ -356,7 +357,7 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
             Valider
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Reject modal */}
       {showRejectModal && (

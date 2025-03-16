@@ -349,6 +349,9 @@ const AdminDashboard = () => {
 
   const handleDeleteMemoire = async (memoireId: string) => {
     try {
+      // Prevent event propagation to avoid triggering detail view
+      event.stopPropagation();
+      
       const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
       if (!confirmed) return;
   
@@ -366,10 +369,21 @@ const AdminDashboard = () => {
       }
   
       if (data.success) {
+        // Reset all related states
+        setSelectedMemoireDetail(null);
+        setShowMemoireDetail(false);
+        setSelectedMemoire(null);
+        
+        // Remove the deleted memoire from the local state
+        setMemoires(prevMemoires => prevMemoires.filter(m => m.id_memoire !== memoireId));
+        
+        // Update stats
+        await Promise.all([
+          fetchStats(),
+          fetchDashboardStats()
+        ]);
+        
         toast.success('Mémoire supprimé avec succès');
-        fetchMemoires();
-        fetchDashboardStats();
-        fetchStats();
       } else {
         throw new Error(data.message || 'Erreur lors de la suppression');
       }
@@ -663,7 +677,10 @@ const AdminDashboard = () => {
                         </>
                       )}
                       <button
-                        onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMemoire(memoire.id_memoire);
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Supprimer"
                       >

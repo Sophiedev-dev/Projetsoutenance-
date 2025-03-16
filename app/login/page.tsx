@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import MySideBar from './ui/sideBar';
 import PreUploadChecker from '../components/PreUploadChecker';
 import SimilarityReport from '../components/SimilarityReport';
+import SimilarityReportModal from '../components/SimilarityReportModal';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -88,54 +89,45 @@ function App() {
     }
   };
 
+  // Add this with the other state declarations at the top of the component
+  const [detailedData, setDetailedData] = useState(null);
+  
   const handleViewSimilarityReport = async (memoire) => {
     try {
       setSelectedMemoire(memoire);
-      const report = await fetchSimilarityReport(memoire.id_memoire);
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/similarity`);
       
-      if (report && report.success) {
+      if (!response.ok) {
+        throw new Error(`Server error (${response.status})`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Utiliser le bon pourcentage de similarité depuis la réponse
         const processedData = {
-          status: {
-            level: report.level || 'info',
-            percentage: report.percentage || 0,
-            similarity_warning_threshold: report.similarity_warning_threshold || 0,
-            similarity_danger_threshold: report.similarity_danger_threshold || 0,
-            color: report.level === 'danger' ? 'red' : 
-                   report.level === 'warning' ? 'orange' : 'green',
-            message: report.message || ''
-          },
-          results: Array.isArray(report.results) ? report.results.map(item => ({
-            id_memoire: item.id_memoire,
-            title: item.libelle,
-            name: item.libelle,
-            similarity: parseFloat(item.similarity) || 0,
-            author: item.nom_etudiant || 'Non spécifié',
-            submissionDate: item.date_soumission,
-            university: item.university,
-            cycle: item.cycle
-          })) : []
+          similarity: data.similarity || data.percentage || 0, // Prendre la valeur correcte
+          matches: data.results.map(result => ({
+            sourceText: result.sourceText || '',
+            targetText: result.targetText || '',
+            similarity: result.similarity || 0,
+            sourcePage: result.sourcePage,
+            targetPage: result.targetPage,
+            matchingPhrases: result.matchingPhrases || []
+          })),
+          targetMemoireTitle: data.targetMemoireTitle || 'Document de référence',
+          sourceMemoireTitle: memoire.libelle
         };
   
-        setSimilarityData(processedData);
+        console.log('Similarity Data:', data); // Pour déboguer
+        setDetailedData(processedData);
         setShowSimilarityReport(true);
-  
-        // Notification avec les seuils de l'administrateur
-        const similarityLevel = processedData.status.percentage;
-        if (similarityLevel >= processedData.status.similarity_danger_threshold) {
-          toast.error(`Similarité élevée: ${similarityLevel}%`);
-        } else if (similarityLevel >= processedData.status.similarity_warning_threshold) {
-          toast.warning(`Similarité modérée: ${similarityLevel}%`);
-        } else {
-          toast.success(`Faible similarité: ${similarityLevel}%`);
-        }
       } else {
         toast.info(`Aucun rapport disponible pour "${memoire.libelle}"`);
       }
     } catch (error) {
       console.error('Erreur:', error);
       toast.error('Erreur lors du chargement du rapport');
-      setSimilarityData(null);
-      setShowSimilarityReport(false);
     }
   };
 
@@ -532,10 +524,10 @@ function App() {
         {/* Show similarity report modal */}
         {showSimilarityReport && selectedMemoire && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">
-                  Similarity Report: {selectedMemoire.libelle}
+                  Rapport de similarité: {selectedMemoire.libelle}
                 </h3>
                 <button
                   onClick={() => setShowSimilarityReport(false)}
@@ -545,16 +537,12 @@ function App() {
                 </button>
               </div>
               
-              <SimilarityReport similarityData={similarityData} />
-              
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => setShowSimilarityReport(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-                >
-                  Close
-                </button>
-              </div>
+              <SimilarityReportModal
+                isOpen={showSimilarityReport}
+                onClose={() => setShowSimilarityReport(false)}
+                similarityData={detailedData}
+                documentTitle={selectedMemoire.libelle}
+              />
             </div>
           </div>
         )}

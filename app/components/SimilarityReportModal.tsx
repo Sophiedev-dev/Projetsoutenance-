@@ -150,43 +150,55 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
             </div>
 
             {/* Extraits similaires */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Extraits similaires</h3>
-              {similarityData.matches && similarityData.matches.length > 0 ? (
+            <div className="space-y-6 mt-6">
+              <h3 className="text-lg font-semibold mb-3">Tous les extraits similaires</h3>
+              {similarityData.matches && Array.isArray(similarityData.matches) && similarityData.matches.length > 0 ? (
                 similarityData.matches.map((match, index) => (
                   <div key={index} className="mb-6 border rounded-lg overflow-hidden">
                     <div className="bg-gray-50 p-3 border-b">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">Extrait {index + 1}</span>
-                        <span className={`${getStatusColor(match.similarity)}`}>
-                          {match.similarity.toFixed(1)}% de similarité
+                        <span className="text-gray-600">
+                          Similarité: {match.similarity.toFixed(1)}%
+                          {match.sourcePage && ` | Page source: ${match.sourcePage}`}
+                          {match.targetPage && ` | Page cible: ${match.targetPage}`}
                         </span>
                       </div>
                     </div>
+
                     <div className="grid grid-cols-2 divide-x">
                       <div className="p-4">
                         <h5 className="text-xs uppercase text-gray-500 mb-2">
-                          Source: {similarityData.sourceMemoireTitle}
+                          Texte source: {similarityData.sourceMemoireTitle}
                         </h5>
-                        <p className="text-sm text-gray-600 italic whitespace-pre-wrap bg-yellow-50 p-2 rounded">
-                          {match.sourceText}
-                        </p>
+                        <div className="bg-yellow-50 p-3 rounded">
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                            {match.sourceText}
+                          </p>
+                        </div>
                       </div>
                       <div className="p-4">
                         <h5 className="text-xs uppercase text-gray-500 mb-2">
-                          Cible: {similarityData.targetMemoireTitle}
+                          Texte cible: {similarityData.targetMemoireTitle}
                         </h5>
-                        <p className="text-sm text-gray-600 italic whitespace-pre-wrap bg-yellow-50 p-2 rounded">
-                          {match.targetText}
-                        </p>
+                        <div className="bg-yellow-50 p-3 rounded">
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                            {match.targetText}
+                          </p>
+                        </div>
                       </div>
                     </div>
+
                     {match.matchingPhrases && match.matchingPhrases.length > 0 && (
-                      <div className="bg-green-50 p-3 border-t">
-                        <h6 className="text-xs uppercase text-gray-500 mb-2">Phrases identiques trouvées</h6>
-                        <ul className="list-disc list-inside space-y-1">
+                      <div className="bg-green-50 p-4 border-t">
+                        <h6 className="text-sm font-medium text-gray-700 mb-2">
+                          Phrases identiques trouvées
+                        </h6>
+                        <ul className="space-y-2">
                           {match.matchingPhrases.map((phrase, i) => (
-                            <li key={i} className="text-sm text-gray-800">"{phrase.text}"</li>
+                            <li key={i} className="text-sm bg-white p-2 rounded border border-green-100">
+                              "{phrase.text}"
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -195,7 +207,14 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
                 ))
               ) : (
                 <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  Aucun extrait similaire trouvé entre les documents
+                  <p className="text-gray-600">
+                    {!similarityData.matches ? 
+                      "Erreur: Données de similarité manquantes" : 
+                      "Aucun extrait similaire trouvé"}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Score de similarité global: {similarityData.similarity.toFixed(1)}%
+                  </p>
                 </div>
               )}
             </div>
