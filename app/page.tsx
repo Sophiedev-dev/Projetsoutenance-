@@ -14,6 +14,7 @@ import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MentionStars } from './components/MentionStars';
+import DocumentVerifier from './components/DocumentVerifier';
 
 const Homepage = () => {
   const router = useRouter();
@@ -93,10 +94,13 @@ const Homepage = () => {
   
       const data = await response.json();
   
+      // Map the data to include signature information
       if (data && Array.isArray(data.memoire)) {
-        setMemoires(data.memoire);
-      } else {
-        console.error("Format inattendu des données reçues :", data);
+        const memoiresWithSignatures = data.memoire.map(memoire => ({
+          ...memoire,
+          hasSignature: Boolean(memoire.signature)
+        }));
+        setMemoires(memoiresWithSignatures);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des mémoires :", error.message);
@@ -222,18 +226,27 @@ const Homepage = () => {
               {[
                 { name: 'Accueil', icon: BookOpen, id: "accueil"},
                 { name: 'Mémoires', icon: GraduationCap, id: "bibliotheque"  },
-                { name: 'Collections', icon: Award }
-              ].map((item) => (
-                <motion.a
-                  key={item.name}
-                  whileHover={{ scale: 1.05 }}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300"
-                  onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" })}
-                >
-                  <item.icon size={18} />
-                  <span>{item.name}</span>
-                </motion.a>
-              ))}
+                { name: 'Collections', icon: Award, id: "collections"},
+                 { name: 'Vérification', icon: ShieldCheck, href: "/Verif" }
+
+                ].map((item) => (
+                  <motion.a
+                    key={item.name}
+                    whileHover={{ scale: 1.05 }}
+                    className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300 cursor-pointer"
+                    onClick={() => {
+                      if (item.href) {
+                        router.push(item.href);
+                      } else {
+                        setActiveTab(item.id);
+                        document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                  >
+                    <item.icon size={18} />
+                    <span>{item.name}</span>
+                  </motion.a>
+                ))}
             </motion.div>
 
             <motion.div
