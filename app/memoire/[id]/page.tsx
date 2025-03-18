@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Worker, Viewer } from '@react-pdf-viewer/core';
+import { Worker, Viewer, Button } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import {
   ChevronLeft,
@@ -76,9 +76,34 @@ const fetchMemoireDetails = async () => {
     );
   }
 
+  const handleDownloadWithVerification = async () => {
+    try {
+      console.log('Downloading memoire:', memoire.id_memoire);
+      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/download`);
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+      
+      const data = await response.blob();
+      const url = window.URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${memoire.libelle}_signed.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      alert('Document téléchargé avec succès. Vérifiez la dernière page pour les informations d\'authentification.');
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Barre de navigation supérieure */}
       <nav className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -92,13 +117,15 @@ const fetchMemoireDetails = async () => {
               </button>
             </div>
             <div className="flex items-center space-x-4">
-            <button
-            onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Visualiser"
-            >
-                 <Download size={20} />
-            </button>
+              {memoire.status === 'validated' && (
+                <Button
+                  onClick={handleDownloadWithVerification}
+                  className="flex items-center gap-2 text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Télécharger avec signature</span>
+                </Button>
+              )}
               <button className="p-2 rounded-full hover:bg-gray-100">
                 <Share2 className="h-5 w-5 text-gray-600" />
               </button>
@@ -165,4 +192,4 @@ const fetchMemoireDetails = async () => {
   );
 };
 
-export default MemoirePage; 
+export default MemoirePage;

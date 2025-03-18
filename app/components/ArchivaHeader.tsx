@@ -16,7 +16,7 @@ const ArchivaHeader = () => {
             transition={{ type: 'spring', stiffness: 400, damping: 10 }}
             className="flex items-center"
           >
-            <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-archiva-indigo via-archiva-blue to-archiva-purple">
+            <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-[#6366F1] via-[#9333EA] to-[#4F46E5]">
               ARCHIVA
             </span>
           </motion.div>

@@ -1,75 +1,205 @@
-/**
- * Document Verification Service
- * 
- * This service handles the verification of digital signatures on documents
- * using cryptographic methods to ensure document authenticity.
- */
-
 import crypto from 'crypto';
+import * as pdfjs from 'pdfjs-dist';
 
 export interface VerificationResult {
   isValid: boolean;
   message: string;
+  details?: {
+    adminName?: string;
+    signedAt?: string;
+    documentTitle?: string;
+  };
 }
 
 /**
- * Calculates SHA-256 hash of a file
+ * Extract text from last page of PDF
  */
-export const calculateFileHash = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const arrayBuffer = e.target?.result as ArrayBuffer;
-        const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        resolve(hashHex);
-      } catch (error) {
-        reject(error);
+// Initialize PDF.js worker
+const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+const extractLastPageText = async (file: File): Promise<string> => {
+  try {
+    // Convert File to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Load PDF document
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    
+    // Get last page
+    const lastPageNum = pdf.numPages;
+    const lastPage = await pdf.getPage(lastPageNum);
+    
+    // Extract text content
+    const textContent = await lastPage.getTextContent();
+    const text = textContent.items.map((item: any) => item.str).join('\n');
+    
+    console.log('Extracted text from last page:', text);
+    return text;
+  } catch (error) {
+    console.error('Error extracting PDF text:', error);
+    return '';
+  }
+};
+
+export const isDocumentSigned = async (file: File): Promise<boolean> => {
+  try {
+    const lastPageText = await extractLastPageText(file);
+    
+    // Check for all required signature elements
+    const hasSignature = lastPageText.includes('Digital Signature:') || 
+                        lastPageText.includes('Signature numérique:') ||
+                        lastPageText.includes('SIGNATURE:');
+                        
+    const hasPublicKey = lastPageText.includes('-----BEGIN PUBLIC KEY-----') && 
+                        lastPageText.includes('-----END PUBLIC KEY-----');
+                        
+    const hasValidation = lastPageText.includes('Validé par:') ||
+                         lastPageText.includes('Validated by:');
+
+    console.log('Signature check:', {
+      hasSignature,
+      hasPublicKey,
+      hasValidation,
+      textSample: lastPageText.slice(0, 200) // Log first 200 chars for debugging
+    });
+
+    return hasSignature && hasPublicKey && hasValidation;
+  } catch (error) {
+    console.error('Error checking signature:', error);
+    return false;
+  }
+};
+
+export const extractSignatureInfo = async (file: File): Promise<{ signature: string; publicKey: string; } | null> => {
+  try {
+    const lastPageText = await extractLastPageText(file);
+    const lines = lastPageText.split('\n');
+    
+    let signature = '';
+    let publicKey = '';
+    let isCollectingPublicKey = false;
+    let nextLineIsSignature = false;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Handle signature
+      if (nextLineIsSignature && trimmedLine.length > 0) {
+        signature = trimmedLine;
+        nextLineIsSignature = false;
       }
+      if (trimmedLine === 'Digital Signature:') {
+        nextLineIsSignature = true;
+      }
+      
+      // Handle public key
+      if (trimmedLine === '-----BEGIN PUBLIC KEY-----') {
+        isCollectingPublicKey = true;
+        publicKey = trimmedLine + '\n';
+      } else if (isCollectingPublicKey) {
+        publicKey += trimmedLine + '\n';
+        if (trimmedLine === '-----END PUBLIC KEY-----') {
+          isCollectingPublicKey = false;
+        }
+      }
+    }
+
+    console.log('Extracted signature:', signature);
+    console.log('Extracted public key:', publicKey);
+
+    if (!signature || !publicKey) {
+      return null;
+    }
+
+    return {
+      signature: signature.trim(),
+      publicKey: publicKey.trim()
     };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
+  } catch (error) {
+    console.error('Error extracting signature info:', error);
+    return null;
+  }
 };
 
 /**
- * Verifies a document signature using the public key
+ * Compare provided public key with the one in document
  */
-export const verifyDocument = async (file: File, publicKey: string): Promise<VerificationResult> => {
-  try {
-    // In a real implementation, this would extract the signature from the document
-    // and verify it using the public key.
-    // For this demo, we'll simulate the verification process
+const comparePublicKeys = (documentKey: string, providedKey: string): boolean => {
+  // Normalize both keys by removing all whitespace, newlines, and headers
+  const normalizeKey = (key: string) => {
+    return key
+      .replace('-----BEGIN PUBLIC KEY-----', '')
+      .replace('-----END PUBLIC KEY-----', '')
+      .replace(/[\s\n\r]/g, '')
+      .trim();
+  };
+  
+  const normalizedDocKey = normalizeKey(documentKey);
+  const normalizedProvidedKey = normalizeKey(providedKey);
+  
+  console.log('Comparing keys:', {
+    normalizedDocKey,
+    normalizedProvidedKey,
+    match: normalizedDocKey === normalizedProvidedKey
+  });
+  
+  return normalizedDocKey === normalizedProvidedKey;
+};
 
-    // Wait for 1.5 seconds to simulate processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Calculate file hash
-    const hash = await calculateFileHash(file);
-    console.log('File hash:', hash);
-    
-    // Simulate verification result
-    // In a real app, this would verify the signature cryptographically
-    const isValid = publicKey.length > 50 && file.size > 0;
-    
-    if (isValid) {
-      return { 
-        isValid: true, 
-        message: "Le document est authentique et n'a pas été modifié. La signature est valide." 
-      };
-    } else {
-      return { 
-        isValid: false, 
-        message: "La vérification a échoué. Le document pourrait avoir été altéré ou la signature est invalide." 
+/**
+ * Verify document signature using admin's public key
+ */
+export const verifyDocument = async (file: File, providedPublicKey: string): Promise<VerificationResult> => {
+  try {
+    // First check if document appears to be signed
+    const isSigned = await isDocumentSigned(file);
+    if (!isSigned) {
+      return {
+        isValid: false,
+        message: "Ce document a ete falcifier pas authentique"
       };
     }
+    
+    // Extract signature info from document
+    const signatureInfo = await extractSignatureInfo(file);
+    if (!signatureInfo) {
+      return {
+        isValid: false,
+        message: "Impossible d'extraire les informations de signature du document."
+      };
+    }
+    
+    // Compare public keys
+    const keysMatch = comparePublicKeys(signatureInfo.publicKey, providedPublicKey);
+    if (!keysMatch) {
+      return {
+        isValid: false,
+        message: "La clé publique fournie ne correspond pas à celle du document."
+      };
+    }
+
+    // Get additional signature details
+    const lastPageText = await extractLastPageText(file);
+    const lines = lastPageText.split('\n');
+    const adminName = lines.find(l => l.includes('Validé par:'))?.split(':')[1]?.trim();
+    const signedAt = lines.find(l => l.includes('Date de validation:'))?.split(':')[1]?.trim();
+    const documentTitle = lines.find(l => l.includes('Document:'))?.split(':')[1]?.trim();
+
+    return {
+      isValid: true,
+      message: "Le document est authentique. La signature numérique est valide.",
+      details: {
+        adminName: adminName || 'Admin',
+        signedAt: signedAt || new Date().toLocaleDateString(),
+        documentTitle: documentTitle || file.name
+      }
+    };
   } catch (error) {
     console.error('Verification error:', error);
-    return { 
-      isValid: false, 
-      message: "Une erreur s'est produite lors de la vérification. Veuillez réessayer." 
+    return {
+      isValid: false,
+      message: "Une erreur s'est produite lors de la vérification: " + (error as Error).message
     };
   }
 };

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Upload, Key, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { verifyDocument, VerificationResult } from '../utils/documentVerificationService';
 import { toast } from 'react-toastify';
-import { Button } from '@react-pdf-viewer/core';
 
 const DocumentVerifier = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -32,76 +31,47 @@ const DocumentVerifier = () => {
   };
 
   const handleVerifyClick = async () => {
-    if (!file || !publicKey.trim()) {
-      toast.error("Veuillez télécharger un document et fournir la clé publique");
+    if (!file) {
+      toast({
+        title: "Fichier manquant",
+        description: "Veuillez télécharger un document à vérifier",
+        variant: "destructive",
+      });
       return;
     }
 
     setVerifying(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file, file.name);
+      // Pass the public key if provided, otherwise the function will try to extract it
+      const result = await verifyDocument(file, publicKey.trim() || undefined);
+      setVerificationResult(result);
       
-      const formattedPublicKey = publicKey.includes('BEGIN PUBLIC KEY') 
-        ? publicKey 
-        : `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----\n`;
-      
-      formData.append('publicKey', formattedPublicKey);
-
-      const response = await fetch('http://localhost:5000/api/memoire/verify-signature', {
-        method: 'POST',
-        body: formData,
+      toast({
+        title: result.isValid ? "Vérification réussie" : "Vérification échouée",
+        description: result.message,
+        variant: result.isValid ? "default" : "destructive",
       });
-
-      // Check content type before parsing
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Le serveur n'a pas renvoyé une réponse JSON valide");
-      }
-
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        setVerificationResult({
-          isValid: true,
-          message: data.message || 'Document vérifié avec succès',
-          details: {
-            documentTitle: data.details?.documentTitle,
-            signedBy: data.details?.signedBy,
-            signedAt: data.details?.signedAt
-          }
-        });
-        toast.success('Vérification réussie');
-      } else {
-        setVerificationResult({
-          isValid: false,
-          message: data.message || 'La signature du document n\'est pas valide',
-          details: null
-        });
-        toast.error(data.message || 'Échec de la vérification');
-      }
     } catch (error) {
       console.error("Error verifying document:", error);
-      setVerificationResult({
-        isValid: false,
-        message: 'Une erreur technique s\'est produite lors de la vérification. Veuillez vérifier que le serveur est en cours d\'exécution.',
-        details: null
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la vérification",
+        variant: "destructive",
       });
-      toast.error('Erreur lors de la vérification. Veuillez vérifier que le serveur est en cours d\'exécution.');
     } finally {
       setVerifying(false);
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Document Upload Section */}
         <div className="relative group">
           <div className="flex flex-col items-center justify-center bg-blue-50 hover:bg-blue-100 rounded-xl p-8 border-2 border-dashed border-blue-200 transition-colors duration-300 h-full">
             <div className="mb-4">
               <Upload 
-                className="h-12 w-12 text-archiva-blue animate-bounce-gentle" 
+                className="h-12 w-12 text-[#6366F1] animate-bounce-gentle" 
                 strokeWidth={1.5} 
               />
             </div>
@@ -117,11 +87,11 @@ const DocumentVerifier = () => {
               id="document-upload"
               className="hidden"
               onChange={handleFileChange}
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.doc,.docx,.txt"
             />
             <label
               htmlFor="document-upload"
-              className="cursor-pointer bg-gradient-to-r from-archiva-indigo to-archiva-blue text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-sm font-medium"
+              className="cursor-pointer bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-sm font-medium"
             >
               Choisir un fichier
             </label>
@@ -135,20 +105,20 @@ const DocumentVerifier = () => {
           </div>
         </div>
 
-        {/* Public Key Section */}
+        {/* Public Key Section - Optional */}
         <div className="relative group">
           <div className="flex flex-col items-center justify-center bg-purple-50 hover:bg-purple-100 rounded-xl p-8 border-2 border-dashed border-purple-200 transition-colors duration-300 h-full">
             <div className="mb-4">
               <Key 
-                className="h-12 w-12 text-archiva-purple animate-bounce-gentle" 
+                className="h-12 w-12 text-[#6366F1] animate-bounce-gentle" 
                 strokeWidth={1.5} 
               />
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-800">
-              Entrez la clé publique
+              Entrez la clé publique (optionnel)
             </h3>
             <p className="text-gray-600 text-center text-sm mb-4">
-              Collez la clé publique fournie par l'administrateur
+              Si le document ne contient pas la clé publique, vous pouvez la fournir ici
             </p>
             
             <textarea
@@ -159,31 +129,30 @@ const DocumentVerifier = () => {
             />
           </div>
         </div>
-      </div>
-      
+        </div>
+
       {/* Verify Button */}
-      <div className="flex justify-center mb-8">
-        <Button
+      <div className="flex justify-center mt-8">
+        <button
           onClick={handleVerifyClick}
-          disabled={!file || !publicKey.trim() || verifying}
-          className="bg-gradient-to-r from-archiva-indigo via-archiva-blue to-archiva-purple hover:from-archiva-purple hover:to-archiva-indigo text-white px-8 py-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-500 text-lg font-medium"
-          size="lg"
+          disabled={!file || verifying}
+          className="bg-gradient-to-r from-[#6366F1] to-[#9333EA] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] font-medium"
         >
           {verifying ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Vérification en cours...
-            </>
+            <div className="flex items-center justify-center">
+              <Loader2 className="animate-spin mr-2 h-5 w-5" />
+              <span>Vérification en cours...</span>
+            </div>
           ) : (
             "Vérifier l'authenticité"
           )}
-        </Button>
+        </button>
       </div>
-      
+
       {/* Verification Result */}
       {verificationResult && (
         <div className={`
-          p-6 rounded-xl shadow-lg transition-all duration-300 border-2
+          mt-8 p-6 rounded-xl border-2 transition-all duration-300
           ${verificationResult.isValid 
             ? 'bg-green-50 border-green-200' 
             : 'bg-red-50 border-red-200'
@@ -202,10 +171,18 @@ const DocumentVerifier = () => {
               <p className={`${verificationResult.isValid ? 'text-green-600' : 'text-red-600'}`}>
                 {verificationResult.message}
               </p>
-              {verificationResult.isValid && (
-                <p className="text-sm text-gray-600 mt-2">
-                  Ce document est signé numériquement et n'a pas été modifié depuis sa signature.
-                </p>
+              {verificationResult.isValid && verificationResult.details && (
+                <div className="text-sm text-gray-600 mt-2 space-y-1">
+                  {verificationResult.details.adminName && (
+                    <p>Validé par: {verificationResult.details.adminName}</p>
+                  )}
+                  {verificationResult.details.signedAt && (
+                    <p>Date de validation: {verificationResult.details.signedAt}</p>
+                  )}
+                  {verificationResult.details.documentTitle && (
+                    <p>Document: {verificationResult.details.documentTitle}</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -216,3 +193,4 @@ const DocumentVerifier = () => {
 };
 
 export default DocumentVerifier;
+
