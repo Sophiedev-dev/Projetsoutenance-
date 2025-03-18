@@ -227,7 +227,6 @@ const Homepage = () => {
                 { name: 'Accueil', icon: BookOpen, id: "accueil"},
                 { name: 'Mémoires', icon: GraduationCap, id: "bibliotheque"  },
                 { name: 'Collections', icon: Award, id: "collections"},
-                 { name: 'Vérification', icon: ShieldCheck, href: "/Verif" }
 
                 ].map((item) => (
                   <motion.a
@@ -252,7 +251,16 @@ const Homepage = () => {
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
+              className="flex items-center space-x-4" // Ajout d'un conteneur flex avec espacement
             >
+              <motion.a
+                whileHover={{ scale: 1.05 }}
+                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
+                href="/Verif"
+              >
+                <ShieldCheck size={20} />
+                <span>Vérification</span>
+              </motion.a>
               <motion.a
                 whileHover={{ scale: 1.05 }}
                 className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"

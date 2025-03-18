@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Key, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, Key, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import { verifyDocument, VerificationResult } from '../utils/documentVerificationService';
 import { toast } from 'react-toastify';
 
@@ -8,6 +8,38 @@ const DocumentVerifier = () => {
   const [publicKey, setPublicKey] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+
+  // Ajoutez la fonction handleDownloadReport à l'intérieur du composant
+  const handleDownloadReport = () => {
+    if (!verificationResult?.isValid) return;
+    
+    const reportContent = `
+RAPPORT DE VÉRIFICATION D'AUTHENTICITÉ
+=====================================
+
+RÉSULTAT: DOCUMENT AUTHENTIQUE
+-----------------------------
+${verificationResult.message}
+
+DÉTAILS DE LA VÉRIFICATION
+--------------------------
+Validé par: ${verificationResult.details?.adminName}
+Date de validation: ${verificationResult.details?.signedAt}
+Document: ${verificationResult.details?.documentTitle}
+
+Ce rapport a été généré automatiquement par le système ARCHIVA.
+`;
+
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rapport_verification.txt';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -151,13 +183,8 @@ const DocumentVerifier = () => {
 
       {/* Verification Result */}
       {verificationResult && (
-        <div className={`
-          mt-8 p-6 rounded-xl border-2 transition-all duration-300
-          ${verificationResult.isValid 
-            ? 'bg-green-50 border-green-200' 
-            : 'bg-red-50 border-red-200'
-          }
-        `}>
+        <div className={`mt-8 p-6 rounded-xl border-2 transition-all duration-300
+          ${verificationResult.isValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
           <div className="flex items-start space-x-4">
             {verificationResult.isValid ? (
               <CheckCircle2 className="h-8 w-8 text-green-600 flex-shrink-0 mt-0.5" />
@@ -182,6 +209,16 @@ const DocumentVerifier = () => {
                   {verificationResult.details.documentTitle && (
                     <p>Document: {verificationResult.details.documentTitle}</p>
                   )}
+                  {/* Ajout du bouton de téléchargement */}
+                  <div className="mt-4">
+                    <button
+                      onClick={handleDownloadReport}
+                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#6366F1] to-[#9333EA] text-white rounded-lg shadow hover:shadow-lg transition-all duration-300"
+                    >
+                      <Download size={16} />
+                      <span>Télécharger le rapport</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
