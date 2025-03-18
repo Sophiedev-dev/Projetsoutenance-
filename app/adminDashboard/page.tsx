@@ -575,7 +575,7 @@ const AdminDashboard = () => {
             <option value="all">Tous les cycles</option>
             <option value="Bachelor">Licence</option>
             <option value="Master">Master</option>
-            <option value="Phd">Doctorat</option>
+            <option value="PhD">Doctorat</option>
           </select>
           <select
             value={filterSpeciality}
@@ -583,7 +583,7 @@ const AdminDashboard = () => {
             className="rounded-lg border-gray-200 focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="all">Toutes les spécialités</option>
-            <option value="Securiter">Securiter</option>
+            <option value="Sécurité">Sécurité</option>
             <option value="GL">Génie Logiciel</option>
             <option value="Réseaux">Réseaux</option>
           </select>

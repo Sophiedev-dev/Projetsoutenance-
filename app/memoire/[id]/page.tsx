@@ -12,13 +12,15 @@ import {
   BookOpen,
   User,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  CheckCircle2
 } from 'lucide-react';
 // import StarRating from '@/app/components/StarRating';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { MentionStars } from '@/app/components/MentionStars';
 import ValidationBadge from '@/app/components/ValidationBadge';
+import { motion } from 'framer-motion';
 
 const MemoirePage = () => {
   const router = useRouter();
@@ -118,13 +120,15 @@ const fetchMemoireDetails = async () => {
             </div>
             <div className="flex items-center space-x-4">
               {memoire.status === 'validated' && (
-                <Button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleDownloadWithVerification}
-                  className="flex items-center gap-2 text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-500 via-emerald-600 to-green-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Télécharger avec signature</span>
-                </Button>
+                  <Download className="w-5 h-5" />
+                  <span className="font-medium">Télécharger</span>
+                </motion.button>
               )}
               <button className="p-2 rounded-full hover:bg-gray-100">
                 <Share2 className="h-5 w-5 text-gray-600" />
@@ -135,13 +139,35 @@ const fetchMemoireDetails = async () => {
       </nav>
 
       {/* En-tête du mémoire */}
-      <div className="pt-20 pb-8 bg-white shadow-sm">
-      {memoire.status === 'validated' && memoire.validated_by_name && (
-    <ValidationBadge 
-      adminName={memoire.validated_by_name}
-      validationDate={memoire.validation_date ? new Date(memoire.validation_date).toLocaleDateString('fr-FR') : undefined}
-    />
-  )}
+      <div className="pt-20 pb-8 bg-white shadow-sm relative">
+        {memoire.status === 'validated' && (
+          <div className="absolute top-4 right-8 flex items-center bg-green-50 border-2 border-green-200 px-6 py-3 rounded-full shadow-lg transform translate-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-green-700 font-medium whitespace-nowrap">Document Authentifié</span>
+            </div>
+          </div>
+        )}
+        
+        {memoire.status === 'validated' && memoire.validated_by_name && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+            <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-green-200 rounded-lg p-4 shadow-sm ml-auto max-w-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-green-100 rounded-full">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">Document Signé et Validé</h3>
+                  <p className="text-green-600">
+                    Validé par {memoire.validated_by_name} le{' '}
+                    {memoire.validation_date ? new Date(memoire.validation_date).toLocaleDateString('fr-FR') : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{memoire.libelle}</h1>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

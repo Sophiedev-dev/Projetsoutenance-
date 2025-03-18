@@ -25,6 +25,8 @@ const Homepage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [selectedCycle, setSelectedCycle] = useState('');
+  const [activeTab, setActiveTab] = useState('accueil');
+  const [selectedSpeciality, setSelectedSpeciality] = useState('');
   const [stats, setStats] = useState({
     memoires: 0,
     chercheurs: 0,
@@ -217,9 +219,9 @@ const Homepage = () => {
             </div>
           </div>
 
-          <nav className="flex justify-between py-4">
+          <nav className="flex flex-col md:flex-row justify-between py-4 space-y-4 md:space-y-0">
             <motion.div
-              className="flex space-x-8"
+              className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-8"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
@@ -227,46 +229,45 @@ const Homepage = () => {
                 { name: 'Accueil', icon: BookOpen, id: "accueil"},
                 { name: 'Mémoires', icon: GraduationCap, id: "bibliotheque"  },
                 { name: 'Collections', icon: Award, id: "collections"},
-
-                ].map((item) => (
-                  <motion.a
-                    key={item.name}
-                    whileHover={{ scale: 1.05 }}
-                    className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300 cursor-pointer"
-                    onClick={() => {
-                      if (item.href) {
-                        router.push(item.href);
-                      } else {
-                        setActiveTab(item.id);
-                        document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
-                      }
-                    }}
-                  >
-                    <item.icon size={18} />
-                    <span>{item.name}</span>
-                  </motion.a>
-                ))}
+              ].map((item) => (
+                <motion.a
+                  key={item.name}
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300 cursor-pointer px-3 py-2"
+                  onClick={() => {
+                    if (item.href) {
+                      router.push(item.href);
+                    } else {
+                      setActiveTab(item.id);
+                      document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                >
+                  <item.icon size={18} />
+                  <span className="text-sm md:text-base">{item.name}</span>
+                </motion.a>
+              ))}
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center space-x-4" // Ajout d'un conteneur flex avec espacement
+              className="flex flex-wrap justify-center md:justify-end items-center gap-3 md:gap-4"
             >
               <motion.a
                 whileHover={{ scale: 1.05 }}
-                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
+                className="px-4 md:px-6 py-2 md:py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 text-sm md:text-base"
                 href="/Verif"
               >
-                <ShieldCheck size={20} />
+                <ShieldCheck size={18} className="hidden sm:block" />
                 <span>Vérification</span>
               </motion.a>
               <motion.a
                 whileHover={{ scale: 1.05 }}
-                className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2"
+                className="px-4 md:px-6 py-2 md:py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 text-sm md:text-base"
                 href="./Sign"
               >
-                <UserCheck size={20} />
+                <UserCheck size={18} className="hidden sm:block" />
                 <span>Espace Admin</span>
               </motion.a>
             </motion.div>
@@ -308,7 +309,7 @@ const Homepage = () => {
         </div>
       </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      <div id="collections" className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             { number: stats.memoires, label: "Mémoires disponibles" },
@@ -333,86 +334,195 @@ const Homepage = () => {
 
       <div id="bibliotheque" className="max-w-7xl mx-auto px-4 py-16">
         <div className="mb-12">
-          <h2 id="current-resumes" className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             Bibliothèque Numérique
           </h2>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-600 text-lg mb-8">
             Explorez notre collection de travaux académiques de qualité
           </p>
+
+          {/* Enhanced Filter Section */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-12 border border-gray-100">
+            <div className="flex flex-col space-y-6">
+              {/* Cycles filter */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                  <GraduationCap className="w-5 h-5 mr-2 text-indigo-600" />
+                  Filtrer par cycle
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setSelectedCycle('');
+                      setSelectedSpeciality('');
+                    }}
+                    className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                      selectedCycle === '' 
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    Tous les cycles
+                  </motion.button>
+                  {['Bachelor', 'Master', 'PhD'].map((cycle) => (
+                    <motion.button
+                      key={cycle}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setSelectedCycle(cycle);
+                        setSelectedSpeciality('');
+                      }}
+                      className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                        selectedCycle === cycle 
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                      }`}
+                    >
+                      {cycle}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Specialities filter - Animated appearance */}
+              {selectedCycle && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                    <BookOpen className="w-5 h-5 mr-2 text-purple-600" />
+                    Spécialités en {selectedCycle}
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {[...new Set(memoires
+                      .filter(m => m.cycle === selectedCycle)
+                      .map(m => m.speciality))]
+                      .map((speciality) => (
+                        <motion.button
+                          key={speciality}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSelectedSpeciality(speciality)}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                            selectedSpeciality === speciality 
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' 
+                            : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          {speciality}
+                        </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {['Bachelor', 'Master', 'PhD'].map((cycle) => (
-          <div key={cycle} className="mb-16">
-            <div className="flex items-center space-x-4 mb-8">
-              <h3 className="text-2xl font-semibold text-gray-800">{cycle}</h3>
-              <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
-            </div>
+        {/* Keep your existing memoires display code */}
+        {['Bachelor', 'Master', 'PhD'].map((cycle) => {
+          if (selectedCycle && selectedCycle !== cycle) return null;
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-              {memoires.filter(memoire => memoire.cycle === cycle).map((memoire) => (
-                <div
-                  key={memoire.id_memoire}
-                  className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
-                  onClick={() => router.push(`/memoire/${memoire.id_memoire}`)}
-                >
-                  <div className="relative w-full h-56 overflow-hidden bg-gray-50">
-                    {thumbnails[memoire.id_memoire] ? (
-                      <div className="relative w-full h-full">
-                        <Image
-                          src={thumbnails[memoire.id_memoire]}
-                          alt="PDF Cover"
-                          width={300}
-                          height={300}
-                          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="animate-pulse flex flex-col items-center">
-                          <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                          <span className="text-sm text-gray-400">Chargement...</span>
+          const cycleMemoires = memoires.filter(memoire => {
+            const matchesCycle = selectedCycle ? memoire.cycle === cycle : true;
+            const matchesSpeciality = selectedSpeciality ? memoire.speciality === selectedSpeciality : true;
+            return matchesCycle && matchesSpeciality;
+          });
+
+          if (cycleMemoires.length === 0) return null;
+
+          const specialities = [...new Set(cycleMemoires.map(memoire => memoire.speciality))];
+
+          return (
+            <div key={cycle} className="mb-16">
+              <div className="flex items-center space-x-4 mb-8">
+                <h3 className="text-2xl font-semibold text-gray-800">{cycle}</h3>
+                <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
+              </div>
+
+              {/* Keep your existing specialities and memoires rendering code */}
+              {specialities.map(speciality => (
+                <div key={`${cycle}-${speciality}`} className="mb-12">
+                  <h4 className="text-xl font-medium text-gray-700 mb-6 pl-4 border-l-4 border-purple-500">
+                    {speciality}
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                    {cycleMemoires
+                      .filter(memoire => memoire.speciality === speciality)
+                      .map((memoire) => (
+                        // Your existing memoire card component with all its functionality
+                        <div
+                          key={memoire.id_memoire}
+                          className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+                          onClick={() => router.push(`/memoire/${memoire.id_memoire}`)}
+                        >
+                          <div className="relative w-full h-56 overflow-hidden bg-gray-50">
+                            {thumbnails[memoire.id_memoire] ? (
+                              <div className="relative w-full h-full">
+                                <Image
+                                  src={thumbnails[memoire.id_memoire]}
+                                  alt="PDF Cover"
+                                  width={300}
+                                  height={300}
+                                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                              </div>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <div className="animate-pulse flex flex-col items-center">
+                                  <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                                  <span className="text-sm text-gray-400">Chargement...</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mb-3">
+                            {memoire.mention ? (
+                            <MentionStars mention={memoire.mention} size="sm" />
+                            ) : (
+                           <span className="text-sm text-gray-500">Non noté</span>
+                           )}
+                         </div>
+
+                          <div className="p-5">
+                            <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
+                              {memoire.libelle}
+                            </h4>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+                                {memoire.cycle}
+                              </span>
+                              <span className="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
+                                {memoire.speciality}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <span className="text-sm font-medium text-gray-500">
+                                {memoire.annee}
+                              </span>
+                              <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm rounded-full hover:shadow-lg transform hover:scale-105 transition-all">
+                                Consulter
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-3">
-                    {memoire.mention ? (
-                    <MentionStars mention={memoire.mention} size="sm" />
-                    ) : (
-                   <span className="text-sm text-gray-500">Non noté</span>
-                   )}
-                 </div>
-
-                  <div className="p-5">
-                    <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
-                      {memoire.libelle}
-                    </h4>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
-                        {memoire.cycle}
-                      </span>
-                      <span className="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
-                        {memoire.speciality}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                      <span className="text-sm font-medium text-gray-500">
-                        {memoire.annee}
-                      </span>
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm rounded-full hover:shadow-lg transform hover:scale-105 transition-all">
-                        Consulter
-                      </button>
-                    </div>
+                      ))}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {selectedMemoire && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
