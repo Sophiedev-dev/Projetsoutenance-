@@ -17,6 +17,9 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [similarityData, setSimilarityData] = useState(null);
   const [selectedMemoire, setSelectedMemoire] = useState(null);
+  // Add these state declarations at the top with other states
+  const [verifiedFileHash, setVerifiedFileHash] = useState<string | null>(null);
+  const [isFileVerified, setIsFileVerified] = useState(false);
   const [showSimilarityReport, setShowSimilarityReport] = useState(false);
   const [newMemoire, setNewMemoire] = useState({
     libelle: '',
@@ -37,6 +40,14 @@ function App() {
       fetchMemoires(userData.user.id_etudiant);
     }
   }, []);
+
+  const handleFileVerified = (fileHash: string) => {
+    setVerifiedFileHash(fileHash);
+    setIsFileVerified(true);
+  };
+
+  
+
 
   const fetchMemoires = async (userId: string) => {
     try {
@@ -142,8 +153,19 @@ function App() {
         toast.error('File size must be less than 10MB');
         return;
       }
+      // Reset verification status when new file is selected
+      setIsFileVerified(false);
+      setVerifiedFileHash(null);
+      setSimilarityData(null);
+      
       setNewMemoire(prev => ({ ...prev, file }));
       setFilePreview(URL.createObjectURL(file));
+      
+      // Show message to user
+      toast.info('⚠️ Please verify your document using the checker above', {
+        position: "top-center",
+        autoClose: 5000,
+      });
     }
   };
 
@@ -160,10 +182,34 @@ function App() {
     }
   };
 
+  // Ajouter cette fonction après les déclarations de state
+  const resetFormStates = () => {
+    setNewMemoire({
+      libelle: '',
+      annee: new Date().getFullYear().toString(),
+      cycle: 'Bachelor',
+      speciality: '',
+      university: '',
+      description: '',
+      mention: '',
+      file: null
+    });
+    setFilePreview(null);
+    setIsFileVerified(false);
+    setVerifiedFileHash(null);
+    setSimilarityData(null);
+    setIsSubmitting(false);
+  };
+  
+  // Modifier votre handleSubmit existant
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-      // Check if similarity data exists and exceeds danger threshold
+  
+    if (!isFileVerified) {
+      toast.error('Veuillez vérifier votre document avant de le soumettre');
+      return;
+    }
+  
     if (similarityData?.status?.level === 'danger') {
       toast.error(`Soumission impossible : Le taux de similarité (${similarityData.status.percentage}%) dépasse le seuil autorisé (${similarityData.status.similarity_danger_threshold}%)`);
       return;
@@ -171,6 +217,13 @@ function App() {
     
     if (!newMemoire.file) {
       toast.error('Veuillez sélectionner un fichier PDF');
+      return;
+    }
+
+    // Verify if the submitted file is the same as the verified one
+    const currentFileHash = await calculateFileHash(newMemoire.file);
+    if (currentFileHash !== verifiedFileHash) {
+      toast.error('Le document soumis est différent de celui vérifié. Veuillez revérifier votre document.');
       return;
     }
   
@@ -215,6 +268,7 @@ function App() {
   
       toast.success(data.message || 'Mémoire soumis avec succès!');
       setShowForm(false);
+      resetFormStates(); // Ajouter ceci
       
       if (userData.user && userData.user.id_etudiant) {
         fetchMemoires(userData.user.id_etudiant);
@@ -242,6 +296,14 @@ function App() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Add the calculateFileHash function here too
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleDeleteMemoire = async (memoireId: string) => {
@@ -338,7 +400,9 @@ function App() {
               </div>
 
               {/* Add Pre-upload similarity checker */}
-              <PreUploadChecker onSimilarityResult={handleSimilarityResult} />
+              <PreUploadChecker onSimilarityResult={handleSimilarityResult} 
+              onFileVerified={handleFileVerified}
+              />
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
@@ -500,13 +564,53 @@ function App() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={isSubmitting || (similarityData && similarityData.status.level === 'danger')}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200 disabled:opacity-50"
+                    type="button" // Changed from 'submit' to 'button'
+                    className={`px-6 py-3 text-white rounded-xl hover:shadow-lg transition-all duration-200 ${
+                      !isFileVerified 
+                        ? 'bg-yellow-500 hover:bg-yellow-600' 
+                        : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02]'
+                    } disabled:opacity-50`}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (!isFileVerified) {
+                        toast.warning('⚠️ Veuillez d\'abord vérifier votre document avec le vérificateur ci-dessus', {
+                          position: "top-center",
+                          autoClose: 5000,
+                          hideProgressBar: false,
+                          closeOnClick: true,
+                          pauseOnHover: true,
+                          draggable: true,
+                        });
+                        return;
+                      }
+                      if (similarityData?.status?.level === 'danger') {
+                        toast.error('❌ Le taux de similarité est trop élevé pour soumettre ce document');
+                        return;
+                      }
+                      // Call handleSubmit if all checks pass
+                      await handleSubmit(e);
+                    }}
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Submitting...' : 'Submit Thesis'}
-                  </button>
+                    {isSubmitting 
+                      ? 'Soumission en cours...' 
+                      : !isFileVerified 
+                        ? '⚠️ Vérifier le document' 
+                        : similarityData?.status?.level === 'danger'
+                          ? '❌ Similarité trop élevée'
+                          : 'Soumettre le mémoire'
+                    }
+                    </button>
                 </div>
+
+                {!isFileVerified && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-600">
+                 <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span>Please verify your document using the checker above before submitting</span>
+                 </div>
+                </div>
+      )}
                 
                 {similarityData && similarityData.status.level === 'danger' && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">

@@ -24,13 +24,25 @@ interface SimilarityResult {
 
 interface PreUploadCheckerProps {
   onSimilarityResult?: (result: { results: { name: string; similarity: number }[]; status: { level: string; message: string } }) => void;
+  onFileVerified?: (fileHash: string) => void;
 }
 
-const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult }) => {
+const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult, onFileVerified }) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<SimilarityResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Add the calculateFileHash function
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // Also add this state for the file hash
+  const [fileHash, setFileHash] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -59,6 +71,9 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult 
     setError(null);
     
     try {
+      // Calculate file hash
+      const hash = await calculateFileHash(file);
+      setFileHash(hash);
       const formData = new FormData();
       formData.append('file', file);
       
@@ -114,6 +129,10 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult 
         const input = document.querySelector('input[type="file"]') as HTMLInputElement;
         if (input) input.value = '';
       }
+      if (onFileVerified) {
+        onFileVerified(hash);
+      }
+
     } catch (err) {
       console.error('Erreur:', err);
       setError(err.message || 'Échec de la vérification');
