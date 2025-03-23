@@ -95,6 +95,41 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
     doc.save('rapport-similarite.pdf');
   };
 
+       // Add this highlight function at the top of your component
+       const highlightSimilarText = (text: string, matchingPhrases?: Array<{text: string, sourceIndex: number, targetIndex: number}>, type?: 'source' | 'target') => {
+        if (!matchingPhrases || matchingPhrases.length === 0) return text;
+        
+        let result = [];
+        let lastIndex = 0;
+        
+        matchingPhrases.forEach(phrase => {
+          const index = type === 'source' ? phrase.sourceIndex : phrase.targetIndex;
+          const length = phrase.text.length;
+          
+          if (index > lastIndex) {
+            result.push(<span key={`normal-${lastIndex}`}>{text.substring(lastIndex, index)}</span>);
+          }
+          
+          result.push(
+            <span 
+              key={`highlight-${index}`} 
+              className="bg-yellow-200 text-red-800 font-semibold px-1 mx-0.5 rounded border-b-2 border-red-500 hover:bg-yellow-300 transition-colors"
+              title="Texte similaire détecté"
+            >
+              {text.substring(index, index + length)}
+            </span>
+          );
+          
+          lastIndex = index + length;
+        });
+        
+        if (lastIndex < text.length) {
+          result.push(<span key={`normal-end`}>{text.substring(lastIndex)}</span>);
+        }
+        
+        return result;
+      };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -165,15 +200,15 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
                         </span>
                       </div>
                     </div>
-
+                    
                     <div className="grid grid-cols-2 divide-x">
                       <div className="p-4">
                         <h5 className="text-xs uppercase text-gray-500 mb-2">
                           Texte source: {similarityData.sourceMemoireTitle}
                         </h5>
-                        <div className="bg-yellow-50 p-3 rounded">
-                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                            {match.sourceText}
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-sm">
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                            {highlightSimilarText(match.sourceText, match.matchingPhrases, 'source')}
                           </p>
                         </div>
                       </div>
@@ -181,23 +216,29 @@ const SimilarityReportModal = ({ isOpen, onClose, similarityData, documentTitle 
                         <h5 className="text-xs uppercase text-gray-500 mb-2">
                           Texte cible: {similarityData.targetMemoireTitle}
                         </h5>
-                        <div className="bg-yellow-50 p-3 rounded">
-                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                            {match.targetText}
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 shadow-sm">
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                            {highlightSimilarText(match.targetText, match.matchingPhrases, 'target')}
                           </p>
                         </div>
                       </div>
                     </div>
 
+                    {/* Enhanced matching phrases section */}
                     {match.matchingPhrases && match.matchingPhrases.length > 0 && (
-                      <div className="bg-green-50 p-4 border-t">
-                        <h6 className="text-sm font-medium text-gray-700 mb-2">
-                          Phrases identiques trouvées
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-t">
+                        <h6 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                          Passages identiques détectés
                         </h6>
                         <ul className="space-y-2">
                           {match.matchingPhrases.map((phrase, i) => (
-                            <li key={i} className="text-sm bg-white p-2 rounded border border-green-100">
-                              "{phrase.text}"
+                            <li 
+                              key={i} 
+                              className="text-sm bg-white p-3 rounded-lg border-l-4 border-red-400 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="font-medium text-red-800 mb-1">Passage {i + 1}</div>
+                              <div className="text-gray-700">"{phrase.text}"</div>
                             </li>
                           ))}
                         </ul>
