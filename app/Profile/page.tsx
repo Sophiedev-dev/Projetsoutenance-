@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Book, BookOpen, Library, User, Settings, Bell, Edit, Shield, Lock, Mail, School, Calendar } from 'lucide-react';
+import { ArrowLeft, Book, BookOpen, Library, User, Settings, Bell, Edit, Shield, Lock, Mail, School, Calendar, Download, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
+import MySideBar from './ui/sideBare';
+
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null);
@@ -127,7 +129,7 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
+      {/* <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
         <div className="flex flex-col h-full">
           <div className="p-6">
             <h1 className="text-2xl font-bold text-blue-600">📚 BANK-MEMO</h1>
@@ -156,25 +158,26 @@ const Profile = () => {
             </a>
           </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="ml-64 p-8">
-        {/* Profile Header */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center">
-              <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+      </div> */}
+      <MySideBar />
+      
+      {/* Main Content - Updated for responsiveness */}
+      <div className="lg:ml-64 p-4 md:p-8">
+        {/* Profile Header - Made responsive */}
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-8 mb-8">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+              <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold">
                 {user?.user?.name?.charAt(0) || 'U'}
               </div>
-              <div className="ml-6">
-                <h2 className="text-2xl font-bold text-gray-800">
+              <div className="text-center md:text-left md:ml-6">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800">
                   {isEditing ? (
                     <input
                       type="text"
                       value={editedUser.name}
                       onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })}
-                      className="border rounded px-2 py-1"
+                      className="border rounded px-2 py-1 w-full md:w-auto"
                     />
                   ) : (
                     user?.user?.name
@@ -183,26 +186,26 @@ const Profile = () => {
                 <p className="text-gray-600 mt-1">Student</p>
               </div>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
               <button
                 onClick={() => setShowPasswordModal(true)}
-                className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="flex items-center justify-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 w-full md:w-auto"
               >
                 <Lock className="mr-2" size={18} />
                 Change Password
               </button>
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className="flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="flex items-center justify-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 w-full md:w-auto"
               >
                 <Edit className="mr-2" size={18} />
                 {isEditing ? 'Save Changes' : 'Edit Profile'}
               </button>
             </div>
           </div>
-
-          {/* Personal Information */}
-          <div className="mt-8 grid grid-cols-2 gap-6">
+      
+          {/* Personal Information - Made responsive */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
               <div className="space-y-4">
@@ -295,11 +298,54 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Thesis History */}
-        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+        {/* Thesis History - Improved responsive design */}
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-8 mb-8">
           <h3 className="text-xl font-semibold mb-6">Thesis History</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          
+          {/* Mobile view */}
+          <div className="md:hidden space-y-4">
+            {memoires.map((memoire) => (
+              <div key={memoire.id_memoire} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                  <span className="font-medium text-gray-900">{memoire.libelle}</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      memoire.status === 'validated' ? 'bg-green-100 text-green-800' :
+                      memoire.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {memoire.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Submitted:</span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(memoire.date_soumission).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-end mt-3">
+                    <a
+                      href={`http://localhost:5000/${memoire.file_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center text-blue-600 hover:text-blue-900"
+                    >
+                      <Download size={18} className="mr-1" />
+                      <span className="text-sm">Download</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Desktop view */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
@@ -310,10 +356,15 @@ const Profile = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {memoires.map((memoire) => (
-                  <tr key={memoire.id_memoire}>
-                    <td className="px-6 py-4 whitespace-nowrap">{memoire.libelle}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  <tr key={memoire.id_memoire} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <FileText className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-900">{memoire.libelle}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                         memoire.status === 'validated' ? 'bg-green-100 text-green-800' :
                         memoire.status === 'rejected' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
@@ -321,17 +372,18 @@ const Profile = () => {
                         {memoire.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 text-sm text-gray-500">
                       {new Date(memoire.date_soumission).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       <a
                         href={`http://localhost:5000/${memoire.file_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-900"
+                        className="flex items-center text-blue-600 hover:text-blue-900"
                       >
-                        Download
+                        <Download size={18} className="mr-1" />
+                        <span className="text-sm">Download</span>
                       </a>
                     </td>
                   </tr>
@@ -341,16 +393,16 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Notifications */}
-        <div className="bg-white rounded-xl shadow-md p-8">
+        {/* Notifications - Made responsive */}
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-8">
           <h3 className="text-xl font-semibold mb-6">Notifications</h3>
           <div className="space-y-4">
             {notifications.map((notification) => (
-              <div key={notification.id_notification} className="flex items-start p-4 bg-gray-50 rounded-lg">
-                <Bell className="text-blue-500 mt-1 mr-4" size={20} />
-                <div>
-                  <p className="text-gray-900">{notification.message}</p>
-                  <p className="text-sm text-gray-500 mt-1">
+              <div key={notification.id_notification} className="flex items-start p-3 md:p-4 bg-gray-50 rounded-lg">
+                <Bell className="text-blue-500 mt-1 mr-3 md:mr-4 flex-shrink-0" size={20} />
+                <div className="min-w-0">
+                  <p className="text-sm md:text-base text-gray-900 break-words">{notification.message}</p>
+                  <p className="text-xs md:text-sm text-gray-500 mt-1">
                     {new Date(notification.date_creation).toLocaleString()}
                   </p>
                 </div>
@@ -362,8 +414,8 @@ const Profile = () => {
 
       {/* Password Change Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-4 md:p-8 w-full max-w-md mx-4">
             <h3 className="text-xl font-semibold mb-6">Change Password</h3>
             <div className="space-y-4">
               <div>

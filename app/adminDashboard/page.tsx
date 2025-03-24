@@ -7,7 +7,9 @@ import {
   PieChart, TrendingUp, UserCheck, Clock,
   Trash2,
   ArrowLeft,
-  LogOut
+  LogOut,
+  X,
+  Menu
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -20,6 +22,7 @@ import SimilarityThresholdConfig from '../components/SimilarityThresholdConfig';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [memoires, setMemoires] = useState([]);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedMemoire, setSelectedMemoire] = useState(null);
@@ -744,19 +747,43 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Mobile menu button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 bg-white rounded-lg shadow-lg hover:bg-gray-100"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+      
       {/* Sidebar */}
-      <motion.div
-        initial={{ x: -250 }}
-        animate={{ x: 0 }}
-        className="w-64 bg-white shadow-lg"
-      >
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-8">
-            Administration
-          </h1>
-          <nav className="space-y-2">
+      <div className={`
+        ${isSidebarOpen ? 'block' : 'hidden'} lg:block
+        fixed lg:static w-64 bg-white shadow-lg min-h-screen
+        transition-all duration-300 ease-in-out z-40
+      `}>
+        <div className="p-4 lg:p-6 h-full flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
+              Administration
+            </h1>
+            {/* Close button for mobile */}
             <button
-              onClick={() => setActiveTab('dashboard')}
+              className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="space-y-2 flex-grow">
+            {/* Navigation buttons remain the same */}
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                setIsSidebarOpen(false);
+              }}
               className={`flex items-center w-full p-3 rounded-lg transition-colors ${
                 activeTab === 'dashboard'
                   ? 'bg-blue-500 text-white'
@@ -812,21 +839,37 @@ const AdminDashboard = () => {
             </button>
           </nav>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* Main content */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-4 lg:p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="w-full"
         >
-          {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'memoires' && renderMemoires()}
-          {activeTab === 'users' && renderUsers()}
-          {activeTab === 'settings' && renderSettings()}
-          {activeTab === 'trash' && <TrashContent />}
+          {/* Dashboard Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Stats cards */}
+          </div>
 
+          {/* Tables and other content */}
+          <div className="space-y-6">
+            {activeTab === 'dashboard' && renderDashboard()}
+            {activeTab === 'memoires' && renderMemoires()}
+            {activeTab === 'users' && renderUsers()}
+            {activeTab === 'settings' && renderSettings()}
+            {activeTab === 'trash' && <TrashContent />}
+          </div>
         </motion.div>
       </div>
       <div className="p-6 border-t border-gray-100">

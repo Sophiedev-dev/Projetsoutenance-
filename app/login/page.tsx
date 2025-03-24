@@ -369,17 +369,18 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       <MySideBar />
-      <div className="ml-64 p-8">
-        <div className="flex justify-between items-center mb-8">
+      {/* Update the main content area to be responsive */}
+      <div className="lg:ml-64 p-4 md:p-8 transition-all duration-300">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            <h2 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
               Welcome {user?.user?.name || 'Student'}!
             </h2>
             <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
+            className="w-full md:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
           >
             <Upload className="mr-2" size={20} />
             Submit New Thesis
@@ -652,7 +653,7 @@ function App() {
         )}
 
         <div className="backdrop-blur-lg bg-white/80 rounded-2xl shadow-xl border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
+          <div className="p-4 md:p-6 border-b border-gray-100">
             <input
               type="text"
               placeholder="Search theses..."
@@ -666,64 +667,66 @@ function App() {
             <table className="w-full">
               <thead className="bg-gray-50/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Title</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Year</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Speciality</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">University</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Mention</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Title</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Year</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Speciality</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">University</th>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Mention</th>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredMemoires.map((memoire) => (
                   <tr key={memoire.id_memoire} className="hover:bg-gray-50/50">
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-4">
                       <div className="flex items-center">
                         <FileText className="h-5 w-5 text-gray-400 mr-2" />
-                        {memoire.libelle}
+                        <span className="truncate max-w-[150px] md:max-w-none">
+                          {memoire.libelle}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">{new Date(memoire.date_soumission).getFullYear()}</td>
-                    <td className="px-6 py-4">{memoire.cycle}</td>
-                    <td className="px-6 py-4">{memoire.speciality}</td>
-                    <td className="px-6 py-4">{memoire.university}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(memoire.status)}`}>
+                    <td className="hidden md:table-cell px-6 py-4">{new Date(memoire.date_soumission).getFullYear()}</td>
+                    <td className="hidden md:table-cell px-6 py-4">{memoire.cycle}</td>
+                    <td className="hidden lg:table-cell px-6 py-4">{memoire.speciality}</td>
+                    <td className="hidden lg:table-cell px-6 py-4">{memoire.university}</td>
+                    <td className="px-3 md:px-6 py-4">
+                      <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${getStatusColor(memoire.status)}`}>
                         {getStatusIcon(memoire.status)}
-                        <span className="ml-2 capitalize">{memoire.status}</span>
+                        <span className="ml-1 md:ml-2 capitalize">{memoire.status}</span>
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">
-                          {memoire.mention || 'Non noté'}
-                        </span>
+                    <td className="hidden md:table-cell px-6 py-4">
+                      <span className="text-sm text-gray-600">
+                        {memoire.mention || 'Non noté'}
+                      </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex space-x-2">
+                    <td className="px-3 md:px-6 py-4">
+                      <div className="flex space-x-1 md:space-x-2">
                         <a
                           href={`http://localhost:5000/${memoire.file_path}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1 md:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Download"
                         >
-                          <Download size={20} />
+                          <Download size={18} />
                         </a>
                         <button
                           onClick={() => handleViewSimilarityReport(memoire)}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          className="p-1 md:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                           title="View Similarity Report"
                         >
-                          <AlertCircle size={20} />
+                          <AlertCircle size={18} />
                         </button>
                         <button
                           onClick={() => handleDeleteMemoire(memoire.id_memoire)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1 md:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete"
                         >
-                          <Trash size={20} />
+                          <Trash size={18} />
                         </button>
                       </div>
                     </td>
