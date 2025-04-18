@@ -157,9 +157,9 @@ const fetchMemoireDetails = async () => {
                   <CheckCircle2 className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-green-800">Document Signé et Validé</h3>
+                  <h3 className="text-lg font-semibold text-green-800">Document Signé Electroniquement</h3>
                   <p className="text-green-600">
-                    Validé par {memoire.validated_by_name} le{' '}
+                  Signé par {memoire.validated_by_name} le{' '}
                     {memoire.validation_date ? new Date(memoire.validation_date).toLocaleDateString('fr-FR') : 'N/A'}
                   </p>
                 </div>
