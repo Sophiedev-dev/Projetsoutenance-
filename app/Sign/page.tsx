@@ -141,9 +141,6 @@ const Form = () => {
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200 text-sm md:text-base"
-            onClick={(e) => {
-              console.log('Bouton cliqué'); // Debug
-            }}
           >
             Sign in
           </button>
@@ -158,7 +155,7 @@ const Form = () => {
           </div>
 
           <div className="text-center text-xs md:text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link 
               href="./register"
               className="font-medium text-blue-600 hover:text-purple-600 transition-colors"

@@ -1,13 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Book, BookOpen, Library, User, Settings, Bell, Edit, Shield, Lock, Mail, School, Calendar, Download, FileText } from 'lucide-react';
+import { Bell, Edit, Lock, Download, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
 import MySideBar from './ui/sideBare';
 
+interface UserData {
+  name: string;
+  surname: string;
+  email: string;
+  phonenumber: string;
+  university: string;
+  faculty: string;
+  speciality: string;
+}
+
+interface IUser {
+  user: UserData & {
+    id_etudiant: string;
+  };
+}
 
 const Profile = () => {
-  const [user, setUser] = useState<any>(null);
+
+interface IUser {
+  user: {
+    id_etudiant: string;
+    name: string;
+    surname: string;
+    email: string;
+    phonenumber: string;
+    university: string;
+    faculty: string;
+    speciality: string;
+  };
+}
+
+const [user, setUser] = useState<IUser | null>(null);
   const [memoires, setMemoires] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
