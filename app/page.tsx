@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
@@ -18,6 +18,7 @@ import DocumentVerifier from './components/DocumentVerifier';
 
 const Homepage = () => {
   const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [thumbnails, setThumbnails] = useState({});
   const [memoires, setMemoires] = useState([]);
   const [selectedMemoire, setSelectedMemoire] = useState(null);
@@ -167,111 +168,165 @@ const Homepage = () => {
     });
   }, [memoires]);
 
+
   return (
-    <div id ="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+    <div id="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         className="backdrop-blur-md bg-white/80 fixed w-full z-50 border-b border-gray-200/50"
       >
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between py-4">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600"
-            >
-              ARCHIVA
-            </motion.div>
+          <div className="py-3">
+            <div className="flex items-center justify-between">
+              {/* Logo */}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="text-2xl font-bold text-indigo-600"
+              >
+                ARCHIVA
+              </motion.div>
 
-            <div className="flex-1 max-w-2xl mx-8">
-              <div className="relative">
-                <motion.div
-                  whileFocus={{ scale: 1.02 }}
-                  className="flex items-center bg-white/70 rounded-full shadow-sm hover:shadow-md transition-all duration-300"
-                >
-                  <Search className="absolute left-4 text-indigo-500" size={20} />
+              {/* Desktop Search Bar */}
+              <div className="hidden md:flex flex-1 mx-8">
+                <div className="relative w-full max-w-2xl">
                   <input
                     type="text"
-                    placeholder="Rechercher par titre, auteur ou mot-clé..."
-                    className="w-full pl-12 pr-6 py-3 bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-full text-gray-700"
+                    placeholder="Rechercher..."
+                    className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-200 focus:outline-none focus:border-indigo-500"
                     value={searchTerm}
                     onChange={handleSearchChange}
                   />
-              </motion.div>
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                  
+                  {/* Suggestions dropdown */}
+                  {suggestions.length > 0 && (
+                    <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50">
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            setSearchTerm(suggestion);
+                            setSuggestions([]);
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-              {suggestions.length > 0 && (
-                  <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50">
-                    {suggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          setSearchTerm(suggestion);
-                          setSuggestions([]);
-                        }}
-                      >
-                        {suggestion}
-                      </div>
-                    ))}
-                  </div>
-               )}
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100 md:hidden"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6 text-gray-600" />
+                ) : (
+                  <Menu className="h-6 w-6 text-gray-600" />
+                )}
+              </button>
+
+              {/* Desktop Navigation */}
+              <nav className="hidden md:flex items-center space-x-4">
+                {[
+                  { name: 'Mémoires', icon: BookOpen, id: "bibliotheque" },
+                  { name: 'Collections', icon: Award, id: "collections" },
+                ].map((item) => (
+                  <button
+                    key={item.name}
+                    className="px-4 py-2 text-gray-600 hover:text-indigo-600 flex items-center gap-2"
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+                <motion.a
+                  whileHover={{ scale: 1.05 }}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
+                  href="/Verif"
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                  <span>Vérification</span>
+                </motion.a>
+                <motion.a
+                  whileHover={{ scale: 1.05 }}
+                  className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 flex items-center gap-2"
+                  href="./Sign"
+                >
+                  <UserCheck className="h-5 w-5" />
+                  <span>Admin</span>
+                </motion.a>
+              </nav>
+            </div>
+
+            {/* Mobile Search - Always visible on mobile */}
+            <div className="mt-3 md:hidden">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-200 focus:outline-none focus:border-indigo-500"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
             </div>
           </div>
 
-          <nav className="flex flex-col md:flex-row justify-between py-4 space-y-4 md:space-y-0">
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
             <motion.div
-              className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-8"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="md:hidden border-t border-gray-200"
             >
-              {[
-                { name: 'Accueil', icon: BookOpen, id: "accueil"},
-                { name: 'Mémoires', icon: GraduationCap, id: "bibliotheque"  },
-                { name: 'Collections', icon: Award, id: "collections"},
-              ].map((item) => (
-                <motion.a
-                  key={item.name}
-                  whileHover={{ scale: 1.05 }}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-indigo-600 transition-colors duration-300 cursor-pointer px-3 py-2"
-                  onClick={() => {
-                    if (item.href) {
-                      router.push(item.href);
-                    } else {
+              <div className="px-4 py-3 space-y-3">
+                {[
+                  { name: 'Mémoires', icon: BookOpen, id: "bibliotheque" },
+                  { name: 'Collections', icon: Award, id: "collections" },
+                ].map((item) => (
+                  <button
+                    key={item.name}
+                    className="w-full px-4 py-2 text-left text-gray-600 hover:bg-gray-100 rounded-lg flex items-center gap-2"
+                    onClick={() => {
                       setActiveTab(item.id);
                       document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
-                    }
-                  }}
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+                <a
+                  href="/Verif"
+                  className="w-full px-4 py-2 text-left bg-emerald-500 text-white rounded-lg flex items-center gap-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <item.icon size={18} />
-                  <span className="text-sm md:text-base">{item.name}</span>
-                </motion.a>
-              ))}
+                  <ShieldCheck className="h-5 w-5" />
+                  <span>Vérification</span>
+                </a>
+                <a
+                  href="./Sign"
+                  className="w-full px-4 py-2 text-left bg-indigo-500 text-white rounded-lg flex items-center gap-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <UserCheck className="h-5 w-5" />
+                  <span>Admin</span>
+                </a>
+              </div>
             </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex flex-wrap justify-center md:justify-end items-center gap-3 md:gap-4"
-            >
-              <motion.a
-                whileHover={{ scale: 1.05 }}
-                className="px-4 md:px-6 py-2 md:py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 text-sm md:text-base"
-                href="/Verif"
-              >
-                <ShieldCheck size={18} className="hidden sm:block" />
-                <span>Vérification</span>
-              </motion.a>
-              <motion.a
-                whileHover={{ scale: 1.05 }}
-                className="px-4 md:px-6 py-2 md:py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center space-x-2 text-sm md:text-base"
-                href="./Sign"
-              >
-                <UserCheck size={18} className="hidden sm:block" />
-                <span>Espace Admin</span>
-              </motion.a>
-            </motion.div>
-          </nav>
+          )}
         </div>
       </motion.header>
 

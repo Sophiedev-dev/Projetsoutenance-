@@ -746,142 +746,125 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 bg-white rounded-lg shadow-lg hover:bg-gray-100"
-        >
-          <Menu size={24} />
-        </button>
-      </div>
-      
-      {/* Sidebar */}
-      <div className={`
-        ${isSidebarOpen ? 'block' : 'hidden'} lg:block
-        fixed lg:static w-64 bg-white shadow-lg min-h-screen
-        transition-all duration-300 ease-in-out z-40
-      `}>
-        <div className="p-4 lg:p-6 h-full flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
-              Administration
-            </h1>
-            {/* Close button for mobile */}
-            <button
-              className="lg:hidden p-2 rounded-md hover:bg-gray-100"
-              onClick={() => setIsSidebarOpen(false)}
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <nav className="space-y-2 flex-grow">
-            {/* Navigation buttons remain the same */}
-            <button
-              onClick={() => {
-                setActiveTab('dashboard');
-                setIsSidebarOpen(false);
-              }}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === 'dashboard'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <BarChart size={20} className="mr-3" />
-              Tableau de bord
-            </button>
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === 'users'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Users size={20} className="mr-3" />
-              Utilisateurs
-            </button>
-            <button
-              onClick={() => setActiveTab('memoires')}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === 'memoires'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <FileText size={20} className="mr-3" />
-              Mémoires
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === 'settings'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Settings size={20} className="mr-3" />
-              Paramètres
-            </button>
-            <button
-              onClick={() => setActiveTab('trash')}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === 'trash'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Trash2 size={20} className="mr-3" />
-              Corbeille
-            </button>
-          </nav>
+    <div className="min-h-screen bg-gray-50 font-sans">
+      {/* Header Mobile remains the same */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white z-50 shadow-md">
+        <div className="flex justify-between items-center p-4">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <h1 className="text-xl font-bold">Administration</h1>
+          <div className="w-8" /> {/* Spacer for balance */}
         </div>
       </div>
 
-      {/* Overlay for mobile */}
+      {/* Enhanced Sidebar */}
+      <aside
+        className={`
+          h-screen flex-shrink-0
+          fixed lg:sticky top-0
+          bg-white shadow-lg
+          w-72 lg:w-64
+          transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 z-50
+        `}
+      >
+        <div className="flex flex-col h-full">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Administration
+              </h1>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="lg:hidden p-2 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <nav className="space-y-2">
+              {[
+                { icon: BarChart, label: 'Tableau de bord', tab: 'dashboard' },
+                { icon: Users, label: 'Utilisateurs', tab: 'users' },
+                { icon: FileText, label: 'Mémoires', tab: 'memoires' },
+                { icon: Settings, label: 'Paramètres', tab: 'settings' },
+                { icon: Trash2, label: 'Corbeille', tab: 'trash' }
+              ].map(({ icon: Icon, label, tab }) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`
+                    flex items-center w-full p-4 rounded-xl transition-all
+                    ${activeTab === tab 
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                      : 'text-gray-600 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <Icon className={`h-5 w-5 ${activeTab === tab ? 'text-white' : 'text-gray-400'} mr-3`} />
+                  <span className="font-medium">{label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="mt-auto p-6 border-t">
+            <a
+              href="/"
+              className="flex items-center w-full p-4 text-gray-600 hover:bg-red-50 rounded-xl transition-colors group"
+            >
+              <LogOut className="h-5 w-5 text-gray-400 group-hover:text-red-500 mr-3" />
+              <span className="font-medium group-hover:text-red-500">Déconnexion</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Main content */}
-      <div className="flex-1 p-4 lg:p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="w-full"
-        >
-          {/* Dashboard Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Stats cards */}
-          </div>
-
-          {/* Tables and other content */}
-          <div className="space-y-6">
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'memoires' && renderMemoires()}
-            {activeTab === 'users' && renderUsers()}
-            {activeTab === 'settings' && renderSettings()}
-            {activeTab === 'trash' && <TrashContent />}
-          </div>
-        </motion.div>
-      </div>
-      <div className="p-6 border-t border-gray-100">
-          <a
-            href="/"
-            className="flex items-center w-full p-3 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-          >
-              <LogOut size={20} className="mr-3" />
-              Déconnexion
-          </a>
+      {/* Main Content */}
+      <main className="lg:ml-80 p-4 lg:p-8 pt-20 lg:pt-8 min-h-screen">
+        <div className="max-w-7xl mx-auto h-full flex flex-col justify-center">
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'memoires' && renderMemoires()}
+          {activeTab === 'users' && renderUsers()}
+          {activeTab === 'settings' && renderSettings()}
+          {activeTab === 'trash' && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-full max-w-5xl">
+                <TrashContent />
+              </div>
+            </div>
+          )}
         </div>
-      <ToastContainer />
+      </main>
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </div>
   );
 };
