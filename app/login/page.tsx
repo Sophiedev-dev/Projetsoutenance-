@@ -468,7 +468,7 @@ function App() {
                         <option value="">Sélectionnez une spécialité</option>
                         <option value="Genie Logiciel">Génie Logiciel</option>
                         <option value="Reseaux">Réseaux</option>
-                        <option value="Securiter">Sécurité</option>
+                        <option value="Securité">Sécurité</option>
                         
                       </select>
                   </div>
