@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getApiUrl } from '../utils/config';
 
 const Form = () => {
   const [name, setName] = useState('');
@@ -31,7 +32,7 @@ const Form = () => {
     try {
       console.log("Envoi des données:", formData); // Pour déboguer
 
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

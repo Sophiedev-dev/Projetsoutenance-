@@ -21,6 +21,7 @@ import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { MentionStars } from '@/app/components/MentionStars';
 import ValidationBadge from '@/app/components/ValidationBadge';
 import { motion } from 'framer-motion';
+import { getApiUrl } from '@/app/utils/config';
 
 const MemoirePage = () => {
   const router = useRouter();
@@ -36,7 +37,7 @@ const MemoirePage = () => {
 // Dans votre composant principal
 const fetchMemoireDetails = async () => {
   try {
-    const response = await fetch(`http://localhost:5000/api/memoire/${params.id}`);
+    const response = await fetch(getApiUrl(`/api/memoire/${params.id}`));
     const data = await response.json();
     
     if (data.success) {
@@ -81,7 +82,7 @@ const fetchMemoireDetails = async () => {
   const handleDownloadWithVerification = async () => {
     try {
       console.log('Downloading memoire:', memoire.id_memoire);
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/download`);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
       
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
@@ -208,7 +209,7 @@ const fetchMemoireDetails = async () => {
       <div className="flex-1 bg-gray-900 h-[calc(100vh-13rem)]">
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
-            fileUrl={`http://localhost:5000/${memoire.file_path.split('/').pop()}`}
+            fileUrl={getApiUrl(`/${memoire.file_path.split('/').pop()}`)}
             // plugins={[defaultLayoutPluginInstance]}
             defaultScale={1.2}
           />

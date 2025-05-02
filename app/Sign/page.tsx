@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'; 
+import { getApiUrl } from '../utils/config';
 
 const SignInPage = () => {
   const [email, setEmail] = useState('');
@@ -18,7 +19,7 @@ const SignInPage = () => {
     console.log('Tentative de connexion avec:', { email, password }); // Debug
   
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

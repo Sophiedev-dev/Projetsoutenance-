@@ -10,6 +10,7 @@ import {
   Download
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { getApiUrl } from '../utils/config';
 
 // Add type definition for better type safety
 interface SimilarityStatus {
@@ -49,7 +50,7 @@ const MemoireDetailView = ({ memoire, onBack, onValidate, onReject }) => {
 const fetchSimilarityData = async (memoireId) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/similarity`);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/similarity`));
       
       if (!response.ok) {
         throw new Error('Erreur lors de la récupération des données de similarité');
@@ -100,7 +101,7 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
   try {
     setIsLoading(true);
     // Fix the API endpoint path to match the backend route
-    const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`, {
+    const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`), {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -228,7 +229,7 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
           </div>
           <div className="flex space-x-3 mb-8">
             <a
-              href={`http://localhost:5000/${memoire.file_path}`}
+              href={getApiUrl(`/${memoire.file_path}`)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -237,7 +238,7 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
               Visualiser le PDF
             </a>
             <a
-              href={`http://localhost:5000/${memoire.file_path}`}
+              href={getApiUrl(`/${memoire.file_path}`)}
               download
               className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >

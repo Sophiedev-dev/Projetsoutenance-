@@ -2,12 +2,13 @@ import React from 'react';
 import ValidationBadge from './ValidationBadge';
 import { ShieldCheck, Download, CheckCircle } from 'lucide-react';
 import { Button } from '@react-pdf-viewer/core';
+import { getApiUrl } from '../utils/config';
 
 const MemoireDisplay = ({ memoire }) => {
   const handleDownloadWithVerification = async () => {
     try {
       console.log('Downloading memoire:', memoire.id_memoire);
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/download`);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
       
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);

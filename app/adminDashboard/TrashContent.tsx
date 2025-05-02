@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { Trash2, RefreshCw, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getApiUrl } from '../utils/config';
 
 const TrashContent = () => {
   const [deletedUsers, setDeletedUsers] = useState([]);
@@ -14,7 +15,7 @@ const TrashContent = () => {
   const fetchDeletedUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:5000/api/users/trash');
+      const response = await fetch(getApiUrl('/api/users/trash'));
       const data = await response.json();
       if (Array.isArray(data.users)) {
         setDeletedUsers(data.users);
@@ -33,7 +34,7 @@ const TrashContent = () => {
 
   const handleRestore = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/restore`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/restore`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

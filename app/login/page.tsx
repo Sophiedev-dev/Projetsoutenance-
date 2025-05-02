@@ -7,6 +7,7 @@ import MySideBar from './ui/sideBar';
 import PreUploadChecker from '../components/PreUploadChecker';
 import SimilarityReport from '../components/SimilarityReport';
 import SimilarityReportModal from '../components/SimilarityReportModal';
+import { getApiUrl } from '../utils/config';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -56,7 +57,7 @@ function App() {
         return;
       }
   
-      const response = await fetch(`http://localhost:5000/api/memoire/etudiant/${userId}`);
+      const response = await fetch(getApiUrl(`/api/memoire/etudiant/${userId}`));
       
       if (!response.ok) {
         throw new Error(`Erreur serveur (${response.status})`);
@@ -81,7 +82,7 @@ function App() {
 
   const fetchSimilarityReport = async (memoireId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/similarity`);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/similarity`));
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -106,7 +107,7 @@ function App() {
   const handleViewSimilarityReport = async (memoire) => {
     try {
       setSelectedMemoire(memoire);
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoire.id_memoire}/similarity`);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity`));
       
       if (!response.ok) {
         throw new Error(`Server error (${response.status})`);
@@ -249,7 +250,7 @@ function App() {
       formData.append('id_etudiant', userData.user.id_etudiant);
       formData.append('status', 'pending');
   
-      const response = await fetch('http://localhost:5000/api/memoire/memoire', {
+      const response = await fetch(getApiUrl('/api/memoire/memoire'), {
         method: 'POST',
         body: formData,
       });
@@ -311,7 +312,7 @@ function App() {
       const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
       if (!confirmed) return;
   
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -706,7 +707,7 @@ function App() {
                     <td className="px-3 md:px-6 py-4">
                       <div className="flex space-x-1 md:space-x-2">
                         <a
-                          href={`http://localhost:5000/${memoire.file_path}`}
+                          href={getApiUrl(`/${memoire.file_path}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1 md:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

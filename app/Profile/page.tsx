@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Edit, Lock, Download, FileText } from 'lucide-react';
 import { toast } from 'react-toastify';
 import MySideBar from './ui/sideBare';
+import { getApiUrl } from '../utils/config';
 
 interface UserData {
   name: string;
@@ -77,7 +78,7 @@ const [user, setUser] = useState<IUser | null>(null);
 
   const fetchMemoires = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/etudiant/${userId}`);
+      const response = await fetch(getApiUrl(`/api/memoire/etudiant/${userId}`));
       if (!response.ok) throw new Error('Failed to fetch theses');
       const data = await response.json();
       setMemoires(data);
@@ -89,7 +90,7 @@ const [user, setUser] = useState<IUser | null>(null);
 
   const fetchNotifications = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/${userId}`);
+      const response = await fetch(getApiUrl(`/api/notifications/${userId}`));
       if (!response.ok) throw new Error('Failed to fetch notifications');
       const data = await response.json();
       setNotifications(data.notifications);
@@ -101,7 +102,7 @@ const [user, setUser] = useState<IUser | null>(null);
 
   const handleUpdateProfile = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user.user.id_etudiant}`, {
+      const response = await fetch(getApiUrl(`/api/users/${user.user.id_etudiant}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ const [user, setUser] = useState<IUser | null>(null);
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user.user.id_etudiant}/password`, {
+      const response = await fetch(getApiUrl(`/api/users/${user.user.id_etudiant}/password`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -358,7 +359,7 @@ const [user, setUser] = useState<IUser | null>(null);
                   </div>
                   <div className="flex justify-end mt-3">
                     <a
-                      href={`http://localhost:5000/${memoire.file_path}`}
+                      href={getApiUrl(`/${memoire.file_path}`)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center text-blue-600 hover:text-blue-900"
@@ -406,7 +407,7 @@ const [user, setUser] = useState<IUser | null>(null);
                     </td>
                     <td className="px-6 py-4">
                       <a
-                        href={`http://localhost:5000/${memoire.file_path}`}
+                        href={getApiUrl(`/${memoire.file_path}`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center text-blue-600 hover:text-blue-900"

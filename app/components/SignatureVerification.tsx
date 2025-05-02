@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { getApiUrl } from '../utils/config';
 
 interface SignatureDetails {
   isValid: boolean;
@@ -19,7 +20,7 @@ const SignatureVerification = ({ memoireId }: { memoireId: number }) => {
       try {
         console.log('Vérification de la signature pour le mémoire:', memoireId);
         
-        const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/verify-signature`);
+        const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/verify-signature`));
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
         }

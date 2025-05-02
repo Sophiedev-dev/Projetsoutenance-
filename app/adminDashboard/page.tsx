@@ -18,7 +18,7 @@ import TrashContent from './TrashContent';
 import SignatureVerification from '../components/SignatureVerification';
 import MemoireDetailView from '../components/MemoireDetailView';
 import SimilarityThresholdConfig from '../components/SimilarityThresholdConfig';
-
+import { getApiUrl } from '../utils/config';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -59,7 +59,7 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin');
+      const response = await fetch(getApiUrl('/api/admin'));
       const data = await response.json();
       setStats({
         total: data.total,
@@ -77,7 +77,7 @@ const AdminDashboard = () => {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/dashboard');
+      const response = await fetch(getApiUrl('/api/dashboard'));
       const data = await response.json();
       console.log("API Response:", data);
       setDashboardStats({
@@ -93,7 +93,7 @@ const AdminDashboard = () => {
 
   const fetchMemoires = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/memoire/memoires-with-students', {
+      const response = await fetch(getApiUrl('/api/memoire/memoires-with-students'), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -132,7 +132,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:5000/api/users');
+      const response = await fetch(getApiUrl('/api/users'));
       const data = await response.json();
 
       if (data.success && Array.isArray(data.users)) {
@@ -153,7 +153,7 @@ const AdminDashboard = () => {
 
   const handleCreateUser = async (userData: any) => {
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(getApiUrl('/api/users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
@@ -169,7 +169,7 @@ const AdminDashboard = () => {
 
   const handleUpdateUser = async (id, userData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const response = await fetch(getApiUrl(`/api/users/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
@@ -189,7 +189,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/soft-delete`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/soft-delete`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -327,7 +327,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/reject/${memoireId}`, {
+      const response = await fetch(getApiUrl(`/api/memoire/reject/${memoireId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rejection_reason: rejectionReason }),
@@ -358,7 +358,7 @@ const AdminDashboard = () => {
       const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
       if (!confirmed) return;
   
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}`, {
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}`), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -399,7 +399,7 @@ const AdminDashboard = () => {
   const handleValidateMemoire = async (memoireId) => {
     try {
       const adminId = 1; // Get this from your auth context or state
-      const response = await fetch(`http://localhost:5000/api/memoire/${memoireId}/valider`, {
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/valider`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -652,7 +652,7 @@ const AdminDashboard = () => {
                   <td className="px-6 py-4">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => window.open(`http://localhost:5000/${memoire.file_path}`, '_blank')}
+                        onClick={() => window.open(getApiUrl(`/${memoire.file_path}`), '_blank')}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Visualiser"
                       >

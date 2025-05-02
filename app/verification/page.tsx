@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getApiUrl } from "../utils/config";
 
 const Form = () => {
   const searchParams = useSearchParams();
@@ -37,7 +38,7 @@ const Form = () => {
     if (email) {
       console.log("Code:", code, "Email:", email);
       try {
-        const response = await fetch("http://localhost:5000/api/auth/verify-email", {
+        const response = await fetch(getApiUrl("/api/auth/verify-email"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

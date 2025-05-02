@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import SimilarityReport from './SimilarityReport';
+import { getApiUrl } from '../utils/config';
 
 // Update the interface to include thresholds
 interface SimilarityResult {
@@ -77,7 +78,7 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult,
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('http://localhost:5000/api/memoire/check-similarity', {
+      const response = await fetch(getApiUrl('/api/memoire/check-similarity'), {
         method: 'POST',
         body: formData,
       });

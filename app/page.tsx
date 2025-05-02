@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MentionStars } from './components/MentionStars';
 import DocumentVerifier from './components/DocumentVerifier';
+import { getApiUrl } from './utils/config';
 
 const Homepage = () => {
   const router = useRouter();
@@ -42,7 +43,7 @@ const Homepage = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/stats');
+      const response = await fetch(getApiUrl('/api/stats'));
       if (!response.ok) {
         throw new Error(`Erreur serveur : ${response.status} - ${response.statusText}`);
       }
@@ -78,7 +79,7 @@ const Homepage = () => {
 
   const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
     try {
-      let url = new URL('http://localhost:5000/api/memoire/memoire');
+      let url = new URL(getApiUrl('/api/memoire/memoire'));
       
       // Add query parameters
       const params = new URLSearchParams();
@@ -132,7 +133,7 @@ const Homepage = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:5000/api/memoire/memoire/suggestions?q=${encodeURIComponent(value)}`);
+      const response = await fetch(getApiUrl(`/api/memoire/memoire/suggestions?q=${encodeURIComponent(value)}`));
       if (!response.ok) {
         throw new Error(`Erreur serveur : ${response.status}`);
       }
@@ -163,7 +164,7 @@ const Homepage = () => {
 
   useEffect(() => {
     memoires.forEach(async (memoire) => {
-      const thumbnail = await getPdfThumbnail(`http://localhost:5000/${memoire.file_path}`);
+      const thumbnail = await getPdfThumbnail(getApiUrl(`/${memoire.file_path}`));
       setThumbnails((prev) => ({ ...prev, [memoire.id_memoire]: thumbnail }));
     });
   }, [memoires]);
@@ -621,7 +622,7 @@ const Homepage = () => {
 
                 <Worker workerUrl={`https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js`}>
                   <Viewer
-                    fileUrl={`http://localhost:5000/${selectedMemoire.file_path}`}
+                    fileUrl={getApiUrl(`/${selectedMemoire.file_path}`)}
                   />
                 </Worker>
               </div>

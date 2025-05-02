@@ -6,6 +6,7 @@
 // import Link from 'next/link';
 // import { Document, Page } from 'react-pdf'; // Import de la bibliothèque react-pdf
 // import { pdfjs } from 'react-pdf';
+// import { getApiUrl } from '../utils/config';
 
 // const MyMemoires = () => {
 //     const [user, setUser] = useState<any>(null);
@@ -30,7 +31,7 @@
 //         return;
 //       }
   
-//       const response = await fetch(`http://localhost:5000/api/memoireEtudiant?id_etudiant=${userId}`);
+//       const response = await fetch(getApiUrl(`/api/memoireEtudiant?id_etudiant=${userId}`));
 //       if (!response.ok) {
 //         throw new Error(`Erreur serveur (${response.status}) : ${await response.text()}`);
 //       }
@@ -179,7 +180,7 @@
 //                 {/* Visualisation du PDF */}
 //                 {selectedMemoire?.id_memoire === memoire.id_memoire && (
 //                   <div className="mt-4">
-//                     <Document file={`http://localhost:5000/${memoire.file_path}`} onLoadSuccess={onLoadSuccess}>
+//                     <Document file={getApiUrl(`/${memoire.file_path}`)} onLoadSuccess={onLoadSuccess}>
 //                       <Page pageNumber={1} />
 //                     </Document>
 //                     {numPages && (

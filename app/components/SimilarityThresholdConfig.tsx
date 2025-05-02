@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Percent, AlertCircle, AlertTriangle, CheckCircle, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { getApiUrl } from '../utils/config';
 
 const SimilarityThresholdConfig = () => {
   const [warningThreshold, setWarningThreshold] = useState('');
@@ -15,7 +16,7 @@ const SimilarityThresholdConfig = () => {
   const fetchThresholds = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:5000/api/admin/similarity-threshold');
+      const response = await fetch(getApiUrl('/api/admin/similarity-threshold'));
       
       if (response.ok) {
         const data = await response.json();
@@ -41,7 +42,7 @@ const SimilarityThresholdConfig = () => {
         return;
       }
       
-      const response = await fetch('http://localhost:5000/api/admin/similarity-threshold', {
+      const response = await fetch(getApiUrl('/api/admin/similarity-threshold'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -5,12 +5,13 @@ import { motion } from 'framer-motion';
 import ArchivaHeader from '../components/ArchivaHeader';
 import DocumentVerifier from '../components/DocumentVerifier';
 import { Key } from 'lucide-react';
+import { getApiUrl } from '../utils/config';
 
 const Verif = () => {
 
   const handleDownloadPublicKey = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/admin/public-key');
+      const response = await fetch(getApiUrl('/api/admin/public-key'));
       if (!response.ok) {
         throw new Error('Failed to fetch public key');
       }
