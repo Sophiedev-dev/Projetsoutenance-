@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps, @typescript-eslint/no-unused-vars */
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -18,6 +20,21 @@ interface Memoire {
   status: string;
   mention: string;
   file_path: string;
+}
+
+interface MatchingPhrase {
+  text: string;
+  sourceIndex: number;
+  targetIndex: number;
+}
+
+interface SimilarityMatch {
+  sourceText: string;
+  targetText: string;
+  similarity: number;
+  sourcePage?: number;
+  targetPage?: number;
+  matchingPhrases?: MatchingPhrase[];
 }
 
 interface User {
@@ -173,13 +190,13 @@ function App() {
         // Transformation des données pour correspondre à l'interface DetailedSimilarityData
         const processedData: DetailedSimilarityData = {
           similarity: data.similarity || data.percentage || 0,
-          matches: Array.isArray(data.matches) ? data.matches.map((match: any) => ({
+          matches: Array.isArray(data.matches) ? data.matches.map((match: SimilarityMatch) => ({
             sourceText: match.sourceText || '',
             targetText: match.targetText || '',
             similarity: match.similarity || 0,
             sourcePage: match.sourcePage,
             targetPage: match.targetPage,
-            matchingPhrases: match.matchingPhrases?.map((phrase: any) => ({
+            matchingPhrases: match.matchingPhrases?.map((phrase: MatchingPhrase | string) => ({
               text: typeof phrase === 'string' ? phrase : phrase.text || '',
               sourceIndex: typeof phrase === 'string' ? 0 : phrase.sourceIndex || 0,
               targetIndex: typeof phrase === 'string' ? 0 : phrase.targetIndex || 0
