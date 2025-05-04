@@ -51,7 +51,7 @@ app.post('/api/memoires', (req, res) => {
   db.query(
     query,
     [libelle, annee, cycle, specialiter, universite, idMemoire, idEtudiant, nomFichier],
-    (err, result) => {
+    (err) => {
       if (err) {
         console.error('Erreur lors de l\'insertion:', err);
         res.status(500).json({ error: 'Erreur lors de l\'insertion' });

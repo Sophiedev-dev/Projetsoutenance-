@@ -2,15 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 
+// Définition du type UserData
+interface UserData {
+  name: string;
+  surname: string;
+  email: string;
+  password: string;
+  is_active: boolean;
+}
 
 interface UserModalProps {
-  user?: any;
+  user: {
+    id_etudiant?: number;
+    name: string;
+    surname: string;
+    email: string;
+    university?: string;
+    faculty?: string;
+    speciality?: string;
+    is_active: boolean;
+  } | null;
   onClose: () => void;
-  onSubmit: (userData: any) => void;
+  onSubmit: (userData: UserData) => void;
 }
 
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<UserData>({
     name: '',
     surname: '',
     email: '',

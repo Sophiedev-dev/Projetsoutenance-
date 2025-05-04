@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import SimilarityReportModal from './SimilarityReportModal';
 import { 
-  AlertCircle, 
-  CheckCircle, 
-  XCircle, 
-  ArrowLeft, 
-  AlertTriangle,
+  ArrowLeft,
   Eye,
-  Download
+  Download,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getApiUrl } from '../utils/config';
 
-// Add type definition for better type safety
 interface SimilarityStatus {
   level: 'danger' | 'warning' | 'success';
   message: string;
@@ -22,131 +17,183 @@ interface SimilarityStatus {
   similarity_danger_threshold: number;
 }
 
+interface SimilarityResult {
+  id_memoire: number;
+  name: string;
+  similarity: number;
+  author: string;
+  email: string;
+  submissionDate: string;
+}
+
 interface SimilarityDataType {
-  results: Array<{
-    id_memoire: number;
-    name: string;
-    similarity: number;
-    author: string;
-    email: string;
-    submissionDate: string;
-  }>;
+  results: SimilarityResult[];
   status: SimilarityStatus;
 }
 
-const MemoireDetailView = ({ memoire, onBack, onValidate, onReject }) => {
-    const [similarityData, setSimilarityData] = useState<SimilarityDataType | null>(null);  const [isLoading, setIsLoading] = useState(true);
+interface Memoire {
+  id_memoire: number;
+  libelle: string;
+  etudiant_nom: string;
+  date_soumission: string;
+  status: 'validated' | 'rejected' | 'pending';
+  cycle: string;
+  speciality: string;
+  university: string;
+  description: string;
+  file_path: string;
+}
+
+interface MemoireDetailViewProps {
+  memoire: Memoire | null;
+  onBack: () => void;
+  onReject: (id: number, reason: string) => void;
+  onValidate: (id: number) => void;
+}
+
+interface DetailedSimilarityMatch {
+  sourceText: string;
+  targetText: string;
+  similarity: number;
+  sourcePage: number;
+  targetPage: number;
+  commonPhrases: string[];
+}
+
+interface DetailedSimilarityData {
+  sourceText: string;
+  targetText: string;
+  similarity: number;
+  sourceMemoireTitle: string;
+  targetMemoireTitle: string;
+  matches: DetailedSimilarityMatch[];
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}
+
+const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({ 
+  memoire, 
+  onBack, 
+  onReject, 
+  onValidate 
+}) => {
+  const [similarityData, setSimilarityData] = useState<SimilarityDataType | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSimilarityReport, setShowSimilarityReport] = useState(false);
-  const [detailedSimilarityData, setDetailedSimilarityData] = useState(null);
+  const [detailedSimilarityData, setDetailedSimilarityData] = useState<DetailedSimilarityData | null>(null);
 
+  
   useEffect(() => {
     if (memoire?.id_memoire) {
       fetchSimilarityData(memoire.id_memoire);
     }
   }, [memoire]);
 
-const fetchSimilarityData = async (memoireId) => {
+  const fetchSimilarityData = async (memoireId: number) => {
     try {
       setIsLoading(true);
       const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/similarity`));
       
-      if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des données de similarité');
-      }
-  
-      const data = await response.json();
+      const rawData = await response.json();
+      console.log('Raw similarity response:', rawData); // Debug log
       
-      if (data.success) {
-        // Calculate the highest similarity percentage from results
-        const highestSimilarity = data.results.length > 0 
-          ? Math.max(...data.results.map(item => item.similarity))
-          : 0;
-  
-        setSimilarityData({
-          results: data.results.map(item => ({
-            id_memoire: item.id_memoire,
-            name: item.libelle || 'Document sans titre',
-            similarity: parseFloat(item.similarity) || 0, // Ensure it's a number
-            author: item.author || 'Auteur inconnu',
-            email: item.email || 'Email non disponible',
-            submissionDate: item.date_soumission || 'Date inconnue'
-          })),
-          status: {
-            level: highestSimilarity >= 70 ? 'danger' : 
-                   highestSimilarity >= 50 ? 'warning' : 
-                   'success',
-            message: data.status.message,
-            color: data.status.color,
-            percentage: highestSimilarity, // Use the highest similarity as overall percentage
-            similarity_warning_threshold: 50,
-            similarity_danger_threshold: 70
-          }
-        });
-      } else {
-        throw new Error(data.message || 'Erreur lors de la récupération des données');
+      if (!response.ok) {
+        throw new Error(rawData.message || `Erreur serveur: ${response.status}`);
       }
+  
+      // Handle both possible response structures
+      const results = rawData.data?.results || rawData.results || [];
+      const status = rawData.data?.status || rawData.status || {};
+  
+      // Ensure results is an array
+      if (!Array.isArray(results)) {
+        console.error('Invalid results format:', results);
+        throw new Error('Format de données invalide: résultats non trouvés');
+      }
+  
+      // Transform and validate each result
+      const transformedResults = results.map(item => ({
+        id_memoire: Number(item.id_memoire || item.memoireId || 0),
+        name: String(item.libelle || item.name || item.titre || 'Document sans titre'),
+        similarity: Number(item.similarity || item.similarite || 0),
+        author: String(item.etudiant_nom || item.author || item.auteur || 'Auteur inconnu'),
+        email: String(item.etudiant_email || item.email || 'Email non disponible'),
+        submissionDate: String(item.date_soumission || item.submissionDate || new Date().toISOString())
+      }));
+  
+      // Calculate similarity percentage
+      const highestSimilarity = transformedResults.length > 0
+        ? Math.max(...transformedResults.map(r => r.similarity))
+        : 0;
+  
+      setSimilarityData({
+        results: transformedResults,
+        status: {
+          level: highestSimilarity >= 70 ? 'danger' :
+                 highestSimilarity >= 50 ? 'warning' :
+                 'success',
+          message: status.message || 'Analyse terminée',
+          color: status.color || (
+            highestSimilarity >= 70 ? 'red' :
+            highestSimilarity >= 50 ? 'orange' :
+            'green'
+          ),
+          percentage: highestSimilarity,
+          similarity_warning_threshold: Number(status.similarity_warning_threshold || 50),
+          similarity_danger_threshold: Number(status.similarity_danger_threshold || 70)
+        }
+      });
+  
     } catch (error) {
       console.error('Error fetching similarity data:', error);
-      toast.error(error.message || 'Erreur lors de la récupération des données de similarité');
+      toast.error(
+        error instanceof Error 
+          ? `Erreur: ${error.message}`
+          : 'Erreur lors de la récupération des données de similarité'
+      );
+      setSimilarityData(null);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchDetailedSimilarityData = async (itemId: number, similarItem: SimilarityResult) => {
+    if (!memoire) return;
 
-// Add function to fetch detailed similarity data
-const fetchDetailedSimilarityData = async (itemId, similarItem) => {
-  try {
-    setIsLoading(true);
-    // Fix the API endpoint path to match the backend route
-    const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`), {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Erreur lors de la récupération des détails');
-    }
-
-    const data = await response.json();
-    console.log("Detailed similarity data:", data); // Debug log
-    
-    if (data.success) {
-      // Transform the data to include matched text passages
-      const formattedData = {
-        sourceText: data.details.sourceText,
-        targetText: data.details.targetText,
-        similarity: similarItem.similarity,
-        sourceMemoireTitle: memoire.libelle,
-        targetMemoireTitle: similarItem.name || similarItem.libelle,
-        matches: data.details.matches.map(match => ({
-          sourceText: match.sourceText,
-          targetText: match.targetText,
-          similarity: parseFloat(match.similarity.toFixed(2)),
-          sourcePage: match.sourcePage,
-          targetPage: match.targetPage,
-          commonPhrases: match.commonPhrases || [] // Add common phrases if available
-        }))
-      };
+    try {
+      setIsLoading(true);
+      const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`));
       
-      setDetailedSimilarityData(formattedData);
-      setShowSimilarityReport(true);
-    } else {
-      throw new Error(data.message || 'Erreur lors de la récupération des détails');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la récupération des détails');
+      }
+
+      const data: ApiResponse<DetailedSimilarityData> = await response.json();
+      
+      if (data.success && data.data) {
+        setDetailedSimilarityData({
+          ...data.data,
+          sourceMemoireTitle: memoire.libelle,
+          targetMemoireTitle: similarItem.name
+        });
+        setShowSimilarityReport(true);
+      } else {
+        throw new Error(data.message || 'Erreur lors de la récupération des détails');
+      }
+    } catch (error) {
+      console.error('Error fetching detailed similarity data:', error);
+      toast.error('Erreur lors de la récupération des détails de similarité');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching detailed similarity data:', error);
-    toast.error('Erreur lors de la récupération des détails de similarité');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
   
   const handleReject = () => {
     if (!rejectionReason) {
@@ -154,12 +201,21 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
       return;
     }
     
-    onReject(memoire.id_memoire, rejectionReason);
-    setShowRejectModal(false);
-    setRejectionReason('');
+    if (memoire) {
+      onReject(memoire.id_memoire, rejectionReason);
+      setShowRejectModal(false);
+      setRejectionReason('');
+    }
   };
 
-  const getStatusBadge = (status) => {
+  // We're removing this unused function to fix the linting error
+  // const handleValidate = () => {
+  //   if (memoire) {
+  //     onValidate(memoire.id_memoire);
+  //   }
+  // };
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'validated':
         return (
@@ -260,144 +316,143 @@ const fetchDetailedSimilarityData = async (itemId, similarItem) => {
             <div className="space-y-6">
               {/* Similarity gauge */}
               <div className="mb-6">
-  <div className="flex justify-between mb-1">
-    <span className="text-sm text-gray-600">Taux de similarité</span>
-    <span className={`text-sm font-medium ${
-      similarityData?.status?.level === 'danger' ? 'text-red-600' : 
-      similarityData?.status?.level === 'warning' ? 'text-orange-600' : 
-      'text-green-600'
-    }`}>
-      {similarityData?.status?.percentage !== undefined ? 
-        similarityData.status.percentage.toFixed(1) : '0'}%
-    </span>
-  </div>
-  <div className="w-full bg-gray-200 rounded-full h-2.5">
-    <div 
-      className={`h-2.5 rounded-full ${
-        similarityData?.status?.level === 'danger' ? 'bg-red-500' : 
-        similarityData?.status?.level === 'warning' ? 'bg-orange-500' : 
-        'bg-green-500'
-      }`} 
-      style={{ width: `${similarityData?.status?.percentage ?? 0}%` }}
-    ></div>
-  </div>
-</div>
-
-
-{similarityData?.results?.length > 0 && (
-  <div className="overflow-x-auto">
-    <table className="min-w-full">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Mémoire
-          </th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Similarité
-          </th>
-          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {similarityData.results.map((item, index) => (
-          <tr key={index} className="hover:bg-gray-50">
-            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-              {item.name}
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap">
-              <div className="flex items-center">
-                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                  item.similarity >= (similarityData.status?.similarity_danger_threshold || 0) ? 'bg-red-500' : 
-                  item.similarity >= (similarityData.status?.similarity_warning_threshold || 0) ? 'bg-orange-500' : 
-                  'bg-green-500'
-                }`}></span>
-                <span className="text-sm">{item.similarity?.toFixed(1)}%</span>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm text-gray-600">Taux de similarité</span>
+                  <span className={`text-sm font-medium ${
+                    similarityData.status.level === 'danger' ? 'text-red-600' : 
+                    similarityData.status.level === 'warning' ? 'text-orange-600' : 
+                    'text-green-600'
+                  }`}>
+                    {similarityData.status.percentage.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className={`h-2.5 rounded-full ${
+                      similarityData.status.level === 'danger' ? 'bg-red-500' : 
+                      similarityData.status.level === 'warning' ? 'bg-orange-500' : 
+                      'bg-green-500'
+                    }`} 
+                    style={{ width: `${similarityData.status.percentage}%` }}
+                  ></div>
+                </div>
               </div>
-            </td>
-            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600">
-            <button 
-    onClick={() => item.id_memoire ? 
-      fetchDetailedSimilarityData(item.id_memoire, item) : 
-      toast.error('ID du mémoire non disponible')}
-    className="hover:underline"
-  >
-    Voir le rapport
-  </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-)}
 
+              {similarityData.results.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Mémoire
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Similarité
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {similarityData.results.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                                item.similarity >= similarityData.status.similarity_danger_threshold ? 'bg-red-500' : 
+                                item.similarity >= similarityData.status.similarity_warning_threshold ? 'bg-orange-500' : 
+                                'bg-green-500'
+                              }`}></span>
+                              <span className="font-medium">
+                                {item.similarity.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <button
+                              onClick={() => fetchDetailedSimilarityData(item.id_memoire, item)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                            >
+                              Voir les détails
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
-              Aucune donnée de similarité disponible pour ce mémoire
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Aucune donnée de similarité disponible</p>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Action buttons */}
-      {/* {memoire.status === 'pending' && (
-        <div className="mt-8 flex justify-end space-x-4">
+        {/* Action buttons */}
+        <div className="flex justify-end space-x-4">
           <button
             onClick={() => setShowRejectModal(true)}
-            className="px-6 py-3 bg-white border border-red-500 text-red-500 rounded-xl hover:bg-red-50 transition-colors"
+            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
           >
             Rejeter
           </button>
+          
           <button
             onClick={() => onValidate(memoire.id_memoire)}
-            className="px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors"
+            className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
           >
             Valider
           </button>
         </div>
-      )} */}
+      </div>
 
-      {/* Reject modal */}
+      {/* Reject Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold mb-4">Rejeter le mémoire</h3>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Raison du rejet..."
-              className="w-full h-32 p-2 border rounded-lg mb-4"
-            />
-            <div className="flex justify-end space-x-2">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Raison du rejet
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full border border-gray-300 rounded-md p-2 h-32"
+                placeholder="Veuillez expliquer pourquoi ce mémoire est rejeté..."
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowRejectModal(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Annuler
               </button>
               <button
                 onClick={handleReject}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
-                Rejeter
+                Confirmer le rejet
               </button>
             </div>
           </div>
         </div>
       )}
 
-        {showSimilarityReport && detailedSimilarityData && (
+      {/* Similarity Report Modal */}
+      {showSimilarityReport && detailedSimilarityData && (
         <SimilarityReportModal
-            isOpen={showSimilarityReport}
-            onClose={() => setShowSimilarityReport(false)}
-            similarityData={detailedSimilarityData}
-            documentTitle={memoire.libelle}
+          data={detailedSimilarityData}
+          onClose={() => setShowSimilarityReport(false)}
         />
-        )}
-
+      )}
     </div>
   );
 };

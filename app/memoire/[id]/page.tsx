@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Worker, Viewer, Button } from '@react-pdf-viewer/core';
-import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import { Worker, Viewer } from '@react-pdf-viewer/core';
 import {
   ChevronLeft,
-  Star,
   Download,
   Share2,
-  BookOpen,
   User,
   Calendar,
   GraduationCap,
@@ -19,22 +16,49 @@ import {
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import { MentionStars } from '@/app/components/MentionStars';
-import ValidationBadge from '@/app/components/ValidationBadge';
+// import ValidationBadge from '@/app/components/ValidationBadge';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/app/utils/config';
+
+interface Memoire {
+  id_memoire: string;
+  libelle: string;
+  etudiant_nom: string;
+  annee: string;
+  cycle: string;
+  speciality: string;
+  mention?: number;
+  status: string;
+  admin_name?: string;
+  validation_date?: string;
+  file_path: string;
+  validated_by_name?: string;
+}
+
+const getMentionLabel = (mention: number | undefined): "Passable" | "Bien" | "Tres Bien" | "Excellent" | null => {
+  switch (mention) {
+    case 1:
+      return "Passable";
+    case 2:
+      return "Bien";
+    case 3:
+      return "Tres Bien";
+    case 4:
+      return "Excellent";
+    default:
+      return null;
+  }
+};
+
 
 const MemoirePage = () => {
   const router = useRouter();
   const params = useParams();
-  const [memoire, setMemoire] = useState<any>(null);
+  const [memoire, setMemoire] = useState<Memoire | null>(null);
   const [loading, setLoading] = useState(true);
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   useEffect(() => {
-    fetchMemoireDetails();
-  }, [params.id]);
-
-// Dans votre composant principal
+    // Dans votre composant principal
 const fetchMemoireDetails = async () => {
   try {
     const response = await fetch(getApiUrl(`/api/memoire/${params.id}`));
@@ -54,6 +78,11 @@ const fetchMemoireDetails = async () => {
     setLoading(false);
   }
 };
+
+    fetchMemoireDetails();
+  }, [params.id]);
+  
+
   
   if (loading) {
     return (
@@ -72,7 +101,7 @@ const fetchMemoireDetails = async () => {
             onClick={() => router.push('/')}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
       </div>
@@ -98,10 +127,10 @@ const fetchMemoireDetails = async () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      alert('Document téléchargé avec succès. Vérifiez la dernière page pour les informations d\'authentification.');
+      alert("Document téléchargé avec succès");
     } catch (error) {
       console.error('Error downloading document:', error);
-      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+      // alert('Erreur lors du téléchargement. Veuillez réessayer.');
     }
   };
 
@@ -160,7 +189,7 @@ const fetchMemoireDetails = async () => {
                 <div>
                   <h3 className="text-lg font-semibold text-green-800">Document Signé Electroniquement</h3>
                   <p className="text-green-600">
-                  Signé par {memoire.validated_by_name} le{' '}
+                  Signé par {memoire.validated_by_name} le&nbsp
                     {memoire.validation_date ? new Date(memoire.validation_date).toLocaleDateString('fr-FR') : 'N/A'}
                   </p>
                 </div>
@@ -192,7 +221,7 @@ const fetchMemoireDetails = async () => {
               <div className="mb-4">
                 <h3 className="text-lg font-semibold mb-2">Mention</h3>
                 {memoire.mention ? (
-                <MentionStars mention={memoire.mention} size="lg" />
+                  <MentionStars mention={getMentionLabel(memoire.mention)} size="lg" />
                 ) : (
                 <span className="text-gray-500">Non noté</span>
                 )}
@@ -210,7 +239,6 @@ const fetchMemoireDetails = async () => {
         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
           <Viewer
             fileUrl={getApiUrl(`/${memoire.file_path.split('/').pop()}`)}
-            // plugins={[defaultLayoutPluginInstance]}
             defaultScale={1.2}
           />
         </Worker>

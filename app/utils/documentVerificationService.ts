@@ -1,5 +1,5 @@
-import crypto from 'crypto';
 import * as pdfjs from 'pdfjs-dist';
+import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 export interface VerificationResult {
   isValid: boolean;
@@ -11,12 +11,11 @@ export interface VerificationResult {
   };
 }
 
-/**
- * Extract text from last page of PDF
- */
 // Initialize PDF.js worker
-const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).toString();
 
 const extractLastPageText = async (file: File): Promise<string> => {
   try {
@@ -32,7 +31,10 @@ const extractLastPageText = async (file: File): Promise<string> => {
     
     // Extract text content
     const textContent = await lastPage.getTextContent();
-    const text = textContent.items.map((item: any) => item.str).join('\n');
+    const text = textContent.items
+      .filter((item): item is TextItem => 'str' in item)
+      .map((item: TextItem) => item.str)
+      .join('\n');
     
     console.log('Extracted text from last page:', text);
     return text;
@@ -89,7 +91,7 @@ export const extractSignatureInfo = async (file: File): Promise<{ signature: str
         signature = trimmedLine;
         nextLineIsSignature = false;
       }
-      if (trimmedLine === 'Digital Signature:') {
+      if (trimmedLine === 'Digital Signature:' || trimmedLine === 'Signature numérique:' || trimmedLine === 'SIGNATURE:') {
         nextLineIsSignature = true;
       }
       
@@ -157,7 +159,7 @@ export const verifyDocument = async (file: File, providedPublicKey: string): Pro
     if (!isSigned) {
       return {
         isValid: false,
-        message: "Ce document a ete falcifier pas authentique"
+        message: "Ce document a été falsifié, pas authentique"
       };
     }
     
@@ -182,9 +184,12 @@ export const verifyDocument = async (file: File, providedPublicKey: string): Pro
     // Get additional signature details
     const lastPageText = await extractLastPageText(file);
     const lines = lastPageText.split('\n');
-    const adminName = lines.find(l => l.includes('Validé par:'))?.split(':')[1]?.trim();
-    const signedAt = lines.find(l => l.includes('Date de validation:'))?.split(':')[1]?.trim();
-    const documentTitle = lines.find(l => l.includes('Document:'))?.split(':')[1]?.trim();
+    const adminNameLine = lines.find(l => l.includes('Validé par:') || l.includes('Validated by:'));
+    const adminName = adminNameLine?.split(':')[1]?.trim();
+    const signedAtLine = lines.find(l => l.includes('Date de validation:') || l.includes('Validation date:'));
+    const signedAt = signedAtLine?.split(':')[1]?.trim();
+    const documentTitleLine = lines.find(l => l.includes('Document:') || l.includes('Titre:'));
+    const documentTitle = documentTitleLine?.split(':')[1]?.trim();
 
     return {
       isValid: true,
@@ -199,7 +204,7 @@ export const verifyDocument = async (file: File, providedPublicKey: string): Pro
     console.error('Verification error:', error);
     return {
       isValid: false,
-      message: "Une erreur s'est produite lors de la vérification: " + (error as Error).message
+      message: "Une erreur s'est produite lors de la vérification: " + (error instanceof Error ? error.message : 'Erreur inconnue')
     };
   }
 };

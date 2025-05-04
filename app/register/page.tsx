@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getApiUrl } from '../utils/config';
+import { toast } from 'react-toastify';
 
 const Form = () => {
   const [name, setName] = useState('');
@@ -14,11 +15,12 @@ const Form = () => {
   const router = useRouter(); // Initialisation du hook
   const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const handleSubmit = async (e) => {
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (password !== confPassword) {
-      alert("Les mots de passe ne correspondent pas.");
+      toast.error("Les mots de passe ne correspondent pas.");
       return;
     }
 
@@ -30,18 +32,17 @@ const Form = () => {
     };
 
     try {
-      console.log("Envoi des données:", formData); // Pour déboguer
+      console.log("Envoi des données:", formData);
 
       const response = await fetch(getApiUrl('/api/auth/signup'), {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
-      // Vérifier le type de contenu de la réponse
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new TypeError("La réponse n'est pas au format JSON!");
@@ -53,17 +54,20 @@ const Form = () => {
         throw new Error(data.message || 'Erreur lors de l\'inscription');
       }
 
-      alert('Inscription réussie !');
+      toast.success('Inscription réussie !');
       setName('');
       setSurname('');
       setEmail('');
       setPassword('');
       setConfPassword('');
       router.push(`/verification?email=${encodeURIComponent(email)}`);
-
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Erreur:", error);
-      alert(error.message || "Erreur de connexion au serveur");
+      if (error instanceof Error) {
+        toast.error(error.message || "Erreur de connexion au serveur");
+      } else {
+        toast.error("Une erreur inconnue s'est produite");
+      }
     }
   };
 

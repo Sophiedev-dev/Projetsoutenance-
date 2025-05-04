@@ -4,11 +4,28 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { Trash2, RefreshCw, Search } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { getApiUrl } from '../utils/config';
 
-const TrashContent = () => {
-  const [deletedUsers, setDeletedUsers] = useState([]);
+interface DeletedUser {
+  id_etudiant: number;
+  name: string;
+  surname: string;
+  email: string;
+  deleted_at: string;
+  university?: string;
+  faculty?: string;
+  speciality?: string;
+  is_active: boolean;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message?: string;
+  users?: T[];
+}
+
+const TrashContent: React.FC = () => {
+  const [deletedUsers, setDeletedUsers] = useState<DeletedUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -16,9 +33,17 @@ const TrashContent = () => {
     try {
       setIsLoading(true);
       const response = await fetch(getApiUrl('/api/users/trash'));
-      const data = await response.json();
-      if (Array.isArray(data.users)) {
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des utilisateurs');
+      }
+      
+      const data: ApiResponse<DeletedUser> = await response.json();
+      
+      if (data.success && Array.isArray(data.users)) {
         setDeletedUsers(data.users);
+      } else {
+        throw new Error('Format de données invalide');
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -32,7 +57,7 @@ const TrashContent = () => {
     fetchDeletedUsers();
   }, []);
 
-  const handleRestore = async (userId) => {
+  const handleRestore = async (userId: number) => {
     try {
       const response = await fetch(getApiUrl(`/api/users/${userId}/restore`), {
         method: 'PUT',
@@ -41,21 +66,22 @@ const TrashContent = () => {
         }
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Erreur lors de la restauration');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la restauration');
       }
+
+      const data = await response.json();
 
       if (data.success) {
         toast.success('Utilisateur restauré avec succès');
         fetchDeletedUsers();
       } else {
-        toast.error(data.message);
+        toast.error(data.message || 'Erreur lors de la restauration');
       }
     } catch (error) {
       console.error('Erreur:', error);
-      toast.error(error.message || 'Erreur lors de la restauration');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la restauration');
     }
   };
 
@@ -113,7 +139,7 @@ const TrashContent = () => {
                     <td className="px-6 py-4">{user.surname}</td>
                     <td className="px-6 py-4">{user.email}</td>
                     <td className="px-6 py-4">
-                      {new Date(user.deleted_at).toLocaleDateString()}
+                      {user.deleted_at ? new Date(user.deleted_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4">
                       <button
@@ -129,7 +155,7 @@ const TrashContent = () => {
               ) : (
                 <tr>
                   <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    Aucun utilisateur dans la corbeille
+                    {deletedUsers.length === 0 ? 'La corbeille est vide' : 'Aucun résultat trouvé'}
                   </td>
                 </tr>
               )}

@@ -65,7 +65,7 @@ const Verif = () => {
          </h1>
 
           <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
-            Téléchargez votre document signé et fournissez la clé publique de l'administrateur 
+            Téléchargez votre document signé et fournissez la clé publique de l&apos;administrateur 
             pour vérifier son authenticité et son intégrité.
           </p>
         </motion.div>
@@ -76,7 +76,7 @@ const Verif = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
         >
-          <DocumentVerifier />
+          <DocumentVerifier documentPath="" />
         </motion.div>
 
         <motion.div
@@ -89,9 +89,9 @@ const Verif = () => {
            Comment ça fonctionne?
          </h3>
           <p className="text-gray-600 text-sm md:text-base">
-          Notre système utilise des algorithmes de hachage cryptographique pour vérifier l'intégrité 
-            et l'authenticité des documents. Chaque document signé contient une empreinte numérique unique 
-            qui peut être vérifiée avec la clé publique de l'émetteur.
+          Notre système utilise des algorithmes de hachage cryptographique pour vérifier l&apos;intégrité 
+            et l&apos;authenticité des documents. Chaque document signé contient une empreinte numérique unique 
+            qui peut être vérifiée avec la clé publique de l&apos;émetteur.
           </p>
         </motion.div>
       </main>

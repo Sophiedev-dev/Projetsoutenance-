@@ -2,14 +2,33 @@ import React, { useState } from 'react';
 import { Upload, Key, CheckCircle2, AlertCircle, Loader2, Download } from 'lucide-react';
 import { verifyDocument, VerificationResult } from '../utils/documentVerificationService';
 import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const DocumentVerifier = () => {
+interface ToastOptions {
+  title?: string;
+  description: string;
+  variant?: 'default' | 'destructive';
+}
+
+interface DocumentVerifierProps {
+  documentPath: string;
+  onVerificationComplete?: (result: VerificationResult) => void;
+}
+
+const DocumentVerifier = ({ onVerificationComplete }: DocumentVerifierProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const [publicKey, setPublicKey] = useState('');
-  const [verifying, setVerifying] = useState(false);
+  const [publicKey, setPublicKey] = useState<string>('');
+  const [verifying, setVerifying] = useState<boolean>(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
 
-  // Ajoutez la fonction handleDownloadReport à l'intérieur du composant
+  const showToast = ({ description, variant = 'default' }: ToastOptions) => {
+    if (variant === 'destructive') {
+      toast.error(description, { position: 'top-right' });
+    } else {
+      toast.success(description, { position: 'top-right' });
+    }
+  };
+
   const handleDownloadReport = () => {
     if (!verificationResult?.isValid) return;
     
@@ -23,9 +42,9 @@ ${verificationResult.message}
 
 DÉTAILS DE LA VÉRIFICATION
 --------------------------
-Validé par: ${verificationResult.details?.adminName}
-Date de validation: ${verificationResult.details?.signedAt}
-Document: ${verificationResult.details?.documentTitle}
+Validé par: ${verificationResult.details?.adminName || 'Non spécifié'}
+Date de validation: ${verificationResult.details?.signedAt || 'Non spécifiée'}
+Document: ${verificationResult.details?.documentTitle || 'Non spécifié'}
 
 Ce rapport a été généré automatiquement par le système ARCHIVA.
 `;
@@ -46,8 +65,7 @@ Ce rapport a été généré automatiquement par le système ARCHIVA.
     setFile(selectedFile);
     
     if (selectedFile) {
-      toast({
-        title: "Fichier sélectionné",
+      showToast({
         description: `"${selectedFile.name}" a été sélectionné`,
       });
     }
@@ -64,8 +82,7 @@ Ce rapport a été généré automatiquement par le système ARCHIVA.
 
   const handleVerifyClick = async () => {
     if (!file) {
-      toast({
-        title: "Fichier manquant",
+      showToast({
         description: "Veuillez télécharger un document à vérifier",
         variant: "destructive",
       });
@@ -74,19 +91,21 @@ Ce rapport a été généré automatiquement par le système ARCHIVA.
 
     setVerifying(true);
     try {
-      // Pass the public key if provided, otherwise the function will try to extract it
-      const result = await verifyDocument(file, publicKey.trim() || undefined);
+      const result = await verifyDocument(file, publicKey.trim() !== "" ? publicKey.trim() : "");
       setVerificationResult(result);
       
-      toast({
-        title: result.isValid ? "Vérification réussie" : "Vérification échouée",
+      // Call the onVerificationComplete callback if provided
+      if (onVerificationComplete) {
+        onVerificationComplete(result);
+      }
+      
+      showToast({
         description: result.message,
         variant: result.isValid ? "default" : "destructive",
       });
     } catch (error) {
       console.error("Error verifying document:", error);
-      toast({
-        title: "Erreur",
+      showToast({
         description: "Une erreur est survenue lors de la vérification",
         variant: "destructive",
       });
@@ -230,4 +249,3 @@ Ce rapport a été généré automatiquement par le système ARCHIVA.
 };
 
 export default DocumentVerifier;
-

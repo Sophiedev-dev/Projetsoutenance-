@@ -1,10 +1,22 @@
 import React from 'react';
 import ValidationBadge from './ValidationBadge';
-import { ShieldCheck, Download, CheckCircle } from 'lucide-react';
-import { Button } from '@react-pdf-viewer/core';
+import { Download } from 'lucide-react';
 import { getApiUrl } from '../utils/config';
 
-const MemoireDisplay = ({ memoire }) => {
+// Utilise un type explicite pour les props du mémoir
+interface Memoire {
+  id_memoire: string;
+  libelle: string;
+  status: string;
+  validated_by_name?: string;
+  validation_date: string;
+}
+
+interface MemoireDisplayProps {
+  memoire: Memoire;
+}
+
+const MemoireDisplay: React.FC<MemoireDisplayProps> = ({ memoire }) => {
   const handleDownloadWithVerification = async () => {
     try {
       console.log('Downloading memoire:', memoire.id_memoire);
@@ -39,13 +51,13 @@ const MemoireDisplay = ({ memoire }) => {
             adminName={memoire.validated_by_name || 'Admin'}
             validationDate={new Date(memoire.validation_date).toLocaleDateString('fr-FR')}
           />
-          <Button
+          <button
             onClick={handleDownloadWithVerification}
-            className="flex items-center gap-2 text-sm w-full justify-center bg-blue-500 hover:bg-blue-600 text-white"
+            className="flex items-center gap-2 text-sm w-full justify-center bg-blue-500 hover:bg-blue-600 text-white p-2 rounded"
           >
             <Download className="w-4 h-4" />
             <span>Télécharger avec signature numérique</span>
-          </Button>
+          </button>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
-import { BookOpen, Book, Library, User, ArrowLeft, Menu } from "lucide-react";
+import { BookOpen, User, ArrowLeft, Menu } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 const MySideBar = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -30,28 +31,28 @@ const MySideBar = () => {
 
           <nav className="flex-1 px-4 space-y-2">
             {[
-              { name: "Dashboard", path: "./login", icon: <BookOpen className="mr-3" /> },
+              { name: "Dashboard", path: "../../login", icon: <BookOpen className="mr-3" /> },
               { name: "Profile", path: "../../Profile", icon: <User className="mr-3" /> }
             ].map((item, index) => (
-              <a
+              <Link
                 key={index}
                 href={item.path}
                 className="flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
               >
                 {item.icon}
                 {item.name}
-              </a>
+              </Link>
             ))}
           </nav>
 
           <div className="p-6">
-            <a
+            <Link
               href="/"
               className="flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200"
             >
               <ArrowLeft className="mr-2" size={20} />
               Back to Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -6,18 +6,31 @@ import Link from 'next/link';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'; 
 import { getApiUrl } from '../utils/config';
 
-const SignInPage = () => {
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+type ApiResponse = {
+  success: boolean;
+  message?: string;
+  user: User;
+};
+
+const SignInPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-    console.log('Tentative de connexion avec:', { email, password }); // Debug
-  
+    console.log('Tentative de connexion avec:', { email, password });
+
     try {
       const response = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
@@ -26,19 +39,18 @@ const SignInPage = () => {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ email, password }),
-        credentials: 'include' // Ajout pour les cookies
+        credentials: 'include'
       });
-  
-      console.log('Réponse du serveur:', response.status); // Debug
-  
-      const data = await response.json();
-      console.log('Données reçues:', data); // Debug
-  
+
+      console.log('Réponse du serveur:', response.status);
+      const data: ApiResponse = await response.json();
+      console.log('Données reçues:', data);
+
       if (!response.ok) {
         setError(data.message || 'Erreur de connexion');
         return;
       }
-  
+
       if (data.success) {
         if (data.user.role === 'admin') {
           const adminData = {
@@ -50,7 +62,7 @@ const SignInPage = () => {
             role: 'admin'
           };
           localStorage.setItem('user', JSON.stringify(adminData));
-          console.log('Redirection admin...'); // Debug
+          console.log('Redirection admin...');
           router.push('/adminDashboard');
         } else {
           const userData = {
@@ -62,13 +74,13 @@ const SignInPage = () => {
             role: 'etudiant'
           };
           localStorage.setItem('user', JSON.stringify(userData));
-          console.log('Redirection étudiant...'); // Debug
+          console.log('Redirection étudiant...');
           router.push(`/login?id=${data.user.id}`);
         }
       } else {
         setError(data.message || 'Erreur de connexion');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Erreur complète:', err);
       setError('Erreur de connexion au serveur');
     }
@@ -85,19 +97,14 @@ const SignInPage = () => {
           <ArrowLeft size={20} />
           <span>Back to Home</span>
         </button>
-  
+
         <div className="w-full max-w-md">
-          <form 
-            onSubmit={handleSubmit}
-            className="space-y-6 p-8"
-          >
+          <form onSubmit={handleSubmit} className="space-y-6 p-8">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-blue-600">
-                Memo Guardian
-              </h1>
-              <p className="text-gray-600">Protégez l'intégrité académique et valorisez l'excellence</p>
+              <h1 className="text-3xl font-bold text-blue-600">Memo Guardian</h1>
+              <p className="text-gray-600">Protégez l&rsquo;intégrité académique et valorisez l&rsquo;excellence</p>
             </div>
-  
+
             <div className="space-y-2">
               <div>
                 <label className="text-sm font-medium text-gray-700">Adresse email</label>
@@ -109,7 +116,7 @@ const SignInPage = () => {
                   placeholder="admin@test.com"
                 />
               </div>
-  
+
               <div>
                 <label className="text-sm font-medium text-gray-700">Mot de passe</label>
                 <div className="relative">
@@ -130,62 +137,62 @@ const SignInPage = () => {
                 </div>
               </div>
             </div>
-  
+
             {error && (
               <div className="bg-red-50 text-red-500 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
-  
+
             <button
               type="submit"
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Se connecter
             </button>
-  
+
             <div className="text-center text-sm text-gray-600">
-              Vous n'avez pas de compte?{' '}
+              Vous n&rsquo;avez pas de compte?{' '}
               <Link 
                 href="./register"
                 className="font-medium text-blue-600 hover:text-blue-700"
               >
-                S'inscrire
+                S&rsquo;inscrire
               </Link>
             </div>
           </form>
         </div>
       </div>
-  
+
       {/* Right side - Image */}
       <div className="hidden lg:block lg:w-1/2 bg-blue-600">
         <div className="h-full w-full bg-[url('https://images.unsplash.com/photo-1457369804613-52c61a468e7d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80')] bg-cover bg-center relative">
           <div className="absolute inset-0 bg-blue-900/70 flex items-center justify-center">
             <div className="text-center text-white p-8 max-w-lg">
-            <h2 className="text-4xl font-bold">Assurez l'authenticité académique</h2>
-            <p className="text-lg">
-              Notre système assure l'intégrité de vos mémoires académiques grâce à une vérification avancée de plagiat et une certification numérique sécurisée.
-            </p>
-            <div className="flex justify-center space-x-12 mt-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold">100%</div>
-                <div className="text-sm opacity-80">Sécurisé</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold">99.9%</div>
-                <div className="text-sm opacity-80">Précision</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold">24/7</div>
-                <div className="text-sm opacity-80">Disponible</div>
+              <h2 className="text-4xl font-bold">Assurez l&rsquo;authenticité académique</h2>
+              <p className="text-lg">
+                Notre système assure l&rsquo;intégrité de vos mémoires académiques grâce à une vérification avancée de plagiat et une certification numérique sécurisée.
+              </p>
+              <div className="flex justify-center space-x-12 mt-8">
+                <div className="text-center">
+                  <div className="text-4xl font-bold">100%</div>
+                  <div className="text-sm opacity-80">Sécurisé</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold">99.9%</div>
+                  <div className="text-sm opacity-80">Précision</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold">24/7</div>
+                  <div className="text-sm opacity-80">Disponible</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
-);
+  );
 };
 
 export default SignInPage;

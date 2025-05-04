@@ -2,20 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart, Users, FileText, Settings, ChevronDown, Book, Trash,
-  Filter, Download, Search, AlertTriangle, CheckCircle, XCircle,
-  PieChart, TrendingUp, UserCheck, Clock,
+  BarChart, Users, FileText, Settings, Trash,
+  Filter, Download, Search, CheckCircle, XCircle, Clock,
   Trash2,
-  ArrowLeft,
   LogOut,
   X,
-  Menu
+  Menu,
 } from 'lucide-react';
+import Link from 'next/link';
 import { toast, ToastContainer } from 'react-toastify';
 import { motion } from 'framer-motion';
 import UserModal from './userModal';
 import TrashContent from './TrashContent';
-import SignatureVerification from '../components/SignatureVerification';
 import MemoireDetailView from '../components/MemoireDetailView';
 import SimilarityThresholdConfig from '../components/SimilarityThresholdConfig';
 import { getApiUrl } from '../utils/config';
@@ -23,19 +21,19 @@ import { getApiUrl } from '../utils/config';
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [memoires, setMemoires] = useState([]);
+  const [memoires, setMemoires] = useState<MemoireData[]>([]);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [selectedMemoire, setSelectedMemoire] = useState(null);
+  const [selectedMemoire, setSelectedMemoire] = useState<MemoireData | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [users, setUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);  // Etat pour gérer l'utilisateur sélectionné
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [filterCycle, setFilterCycle] = useState('all');
   const [filterSpeciality, setFilterSpeciality] = useState('all');
   const [showMemoireDetail, setShowMemoireDetail] = useState(false);
-  const [selectedMemoireDetail, setSelectedMemoireDetail] = useState(null);
-  const [stats, setStats] = useState({
+  const [selectedMemoireDetail, setSelectedMemoireDetail] = useState<MemoireData | null>(null);
+  const [stats, setStats] = useState<Stats>({
     total: 0,
     validated: 0,
     rejected: 0,
@@ -44,18 +42,11 @@ const AdminDashboard = () => {
     activeUsers: 0
   });
 
-  // Nouvelles statistiques pour le tableau de bord
-  const [dashboardStats, setDashboardStats] = useState({
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     recentSubmissions: [],
     topSpecialities: [],
     monthlySubmissions: []
   });
-
-  useEffect(() => {
-    fetchMemoires();
-    fetchStats();
-    fetchDashboardStats();
-  }, []);
 
   const fetchStats = async () => {
     try {
@@ -91,7 +82,59 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchMemoires = async () => {
+  interface MemoireData {
+    id_memoire: number;
+    libelle: string;
+    etudiant_nom: string;
+    cycle: string;
+    speciality: string;
+    status: 'pending' | 'validated' | 'rejected'; 
+    mention?: number;
+    file_path: string;
+    date_soumission: string;  // Remove the optional '?' modifier
+    university: string;
+    description: string;
+
+  }
+
+  interface MonthlySubmission {
+    month: string;
+    count: number;
+  }
+
+  interface DashboardStats {
+    recentSubmissions: MemoireData[];
+    topSpecialities: { speciality: string; count: number }[];
+    monthlySubmissions: MonthlySubmission[]; 
+  }
+  
+  interface Stats {
+    total: number;
+    validated: number;
+    rejected: number;
+    pending: number;
+    totalUsers: number;
+    activeUsers: number;
+  }
+
+   // Add for user data
+   interface UserData {
+    name: string;
+    surname: string;
+    email: string;
+    university?: string;
+    faculty?: string;
+    speciality?: string;
+    password?: string;
+    is_active: boolean;
+  }
+
+  interface User extends UserData {
+    id_etudiant: number;
+  }
+
+
+  const fetchMemoires = React.useCallback(async () => {
     try {
       const response = await fetch(getApiUrl('/api/memoire/memoires-with-students'), {
         method: 'GET',
@@ -105,11 +148,12 @@ const AdminDashboard = () => {
       }
       const data = await response.json();
       
-      // Check if data has the memoire property
       if (data.success && data.memoire) {
-        const memoiresWithStudents = data.memoire.map(memoire => ({
+        const memoiresWithStudents = data.memoire.map((memoire: MemoireData) => ({
           ...memoire,
-          etudiant_nom: memoire.etudiant_nom || 'N/A'
+          id_memoire: Number(memoire.id_memoire),
+          etudiant_nom: memoire.etudiant_nom || 'N/A',
+          date_soumission: memoire.date_soumission || new Date().toISOString()  // Provide default value
         }));
         setMemoires(memoiresWithStudents);
       } else {
@@ -121,7 +165,14 @@ const AdminDashboard = () => {
       toast.error('Erreur lors de la récupération des mémoires');
       setMemoires([]);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchMemoires();
+    fetchStats();
+    fetchDashboardStats();
+  }, [fetchMemoires]);
+
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -151,43 +202,60 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleCreateUser = async (userData: any) => {
+ 
+  
+  // Update the handleCreateUser function
+  const handleCreateUser = async (userData: UserData) => {
     try {
       const response = await fetch(getApiUrl('/api/users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
+  
       if (!response.ok) throw new Error('Erreur lors de la création');
+  
       toast.success('Utilisateur créé avec succès');
       fetchUsers();
       setIsUserModalOpen(false);
     } catch (error) {
-      toast.error(error.message);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Une erreur inconnue est survenue');
+      }
     }
   };
+  
 
-  const handleUpdateUser = async (id, userData) => {
+  const handleUpdateUser = async (id: number, userData: UserData) => {
     try {
       const response = await fetch(getApiUrl(`/api/users/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
+  
       if (!response.ok) throw new Error('Erreur lors de la mise à jour');
+  
       toast.success('Utilisateur mis à jour avec succès');
       fetchUsers();
       setIsUserModalOpen(false);
     } catch (error) {
-      toast.error(error.message);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Une erreur inconnue est survenue');
+      }
     }
   };
+  
 
-  const handleDeleteUser = async (userId) => {
+  const handleDeleteUser = async (userId: number) => {
     if (!window.confirm('Êtes-vous sûr de vouloir déplacer cet utilisateur vers la corbeille ?')) {
       return;
     }
-
+  
     try {
       const response = await fetch(getApiUrl(`/api/users/${userId}/soft-delete`), {
         method: 'PUT',
@@ -195,14 +263,14 @@ const AdminDashboard = () => {
           'Content-Type': 'application/json'
         },
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Erreur lors de la suppression');
       }
-
+  
       const data = await response.json();
-
+  
       if (data.success) {
         toast.success('Utilisateur déplacé vers la corbeille');
         fetchUsers();
@@ -211,9 +279,14 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Erreur détaillée:', error);
-      toast.error(error.message || 'Erreur lors de la suppression');
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Une erreur inconnue est survenue');
+      }
     }
   };
+  
 
   const renderUsers = () => (
     <motion.div
@@ -226,7 +299,7 @@ const AdminDashboard = () => {
         <h2 className="text-xl font-semibold">Gestion des Utilisateurs</h2>
         <button
           onClick={() => {
-            setSelectedUser(null);
+            setSelectedUser(null);  // Réinitialise la sélection d'utilisateur
             setIsUserModalOpen(true);
           }}
           className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
@@ -234,7 +307,7 @@ const AdminDashboard = () => {
           Ajouter un utilisateur
         </button>
       </div>
-
+  
       {isLoading ? (
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -275,7 +348,7 @@ const AdminDashboard = () => {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => {
-                            setSelectedUser(user);
+                            setSelectedUser(user);  // Sélectionne l'utilisateur
                             setIsUserModalOpen(true);
                           }}
                           className="text-blue-600 hover:text-blue-800"
@@ -303,40 +376,42 @@ const AdminDashboard = () => {
           </table>
         </div>
       )}
+  
+{isUserModalOpen && (
+  <UserModal
+    user={selectedUser ? selectedUser : null}  // Vérification si selectedUser n'est pas null
+    onClose={() => setIsUserModalOpen(false)}
+    onSubmit={(userData) => {
+      if (selectedUser) {
+        handleUpdateUser(selectedUser.id_etudiant, userData);  // Mise à jour de l'utilisateur existant
+      } else {
+        handleCreateUser(userData);  // Création d'un nouvel utilisateur
+      }
+    }}
+  />
+)}
 
-      {isUserModalOpen && (
-        <UserModal
-          user={selectedUser}
-          onClose={() => setIsUserModalOpen(false)}
-          onSubmit={(userData) => {
-            if (selectedUser) {
-              handleUpdateUser(selectedUser.id_etudiant, userData);
-            } else {
-              handleCreateUser(userData);
-            }
-          }}
-        />
-      )}
     </motion.div>
   );
+  
 
-  const handleRejection = async (memoireId) => {
+  const handleRejection = async (memoireId: number) => {
     if (!rejectionReason) {
       toast.error('Veuillez fournir une raison du rejet');
       return;
     }
-
+  
     try {
       const response = await fetch(getApiUrl(`/api/memoire/reject/${memoireId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rejection_reason: rejectionReason }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Erreur lors du rejet du mémoire');
       }
-
+  
       toast.success('Mémoire rejeté avec succès');
       setShowMemoireDetail(false);
       setSelectedMemoireDetail(null);
@@ -344,16 +419,20 @@ const AdminDashboard = () => {
       setSelectedMemoire(null);
       fetchMemoires();
       fetchStats();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erreur:', error);
-      toast.error(error.message);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Une erreur inconnue est survenue');
+      }
     }
   };
+  
 
-  const handleDeleteMemoire = async (memoireId: string) => {
+  const handleDeleteMemoire = async (memoireId: number, e?: React.MouseEvent) => {
     try {
-      // Prevent event propagation to avoid triggering detail view
-      event.stopPropagation();
+      if (e) e.stopPropagation();
       
       const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
       if (!confirmed) return;
@@ -372,31 +451,22 @@ const AdminDashboard = () => {
       }
   
       if (data.success) {
-        // Reset all related states
         setSelectedMemoireDetail(null);
         setShowMemoireDetail(false);
         setSelectedMemoire(null);
-        
-        // Remove the deleted memoire from the local state
         setMemoires(prevMemoires => prevMemoires.filter(m => m.id_memoire !== memoireId));
-        
-        // Update stats
-        await Promise.all([
-          fetchStats(),
-          fetchDashboardStats()
-        ]);
-        
+        await Promise.all([fetchStats(), fetchDashboardStats()]);
         toast.success('Mémoire supprimé avec succès');
       } else {
         throw new Error(data.message || 'Erreur lors de la suppression');
       }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
-      toast.error(error.message || 'Erreur lors de la suppression du mémoire');
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la suppression du mémoire');
     }
   };
 
-  const handleValidateMemoire = async (memoireId) => {
+  const handleValidateMemoire = async (memoireId: number) => {
     try {
       const adminId = 1; // Get this from your auth context or state
       const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/valider`), {
@@ -455,19 +525,17 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {dashboardStats.recentSubmissions && Array.isArray(dashboardStats.recentSubmissions) &&
-                dashboardStats.recentSubmissions.map((memoire) => (
-                  <tr key={memoire.id_memoire} className="border-b">
-                    <td className="py-2">{memoire.libelle}</td>
-                    <td className="py-2">{new Date(memoire.date_soumission).toLocaleDateString()}</td>
-                    <td className="py-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${memoire.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {memoire.status === 'validated' ? 'Validé' : 'En attente'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              }
+{dashboardStats.recentSubmissions.map((memoire: MemoireData) => (
+  <tr key={memoire.id_memoire} className="border-b">
+    <td className="py-2">{memoire.libelle}</td>
+    <td className="py-2">
+      {memoire.date_soumission ? new Date(memoire.date_soumission).toLocaleDateString() : 'N/A'}
+    </td>
+    <td className="py-2">
+      <StatusBadge status={memoire.status} /> {/* Utiliser le composant StatusBadge */}
+    </td>
+  </tr>
+))}
             </tbody>
           </table>
         </div>
@@ -496,24 +564,25 @@ const AdminDashboard = () => {
       <div className="text-center text-gray-500">
         Aucune spécialité disponible
       </div>
-    )}
+  )}
   </div>
 </div>
 </div>
   );
 
-  // Le StatCard reste inchangé
-  const StatCard = ({ title, value, icon, color }) => (
-    <div className={`bg-white rounded-xl shadow-md p-6 border-l-4 border-${color}-500`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
-        </div>
-        {icon}
-      </div>
-    </div>
-  );
+  // Remove unused StatCard component
+  // Delete or comment out the StatCard component since it's not being used
+  // const StatCard = ({ title, value, icon, color }) => (
+  //   <div className={`bg-white rounded-xl shadow-md p-6 border-l-4 border-${color}-500`}>
+  //     <div className="flex items-center justify-between">
+  //       <div>
+  //         <p className="text-sm text-gray-600">{title}</p>
+  //         <p className="text-2xl font-bold mt-1">{value}</p>
+  //       </div>
+  //       {icon}
+  //     </div>
+  //   </div>
+  // );
 
   const renderSettings = () => (
     <motion.div
@@ -679,16 +748,16 @@ const AdminDashboard = () => {
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMemoire(memoire.id_memoire);
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Supprimer"
-                      >
-                        <Trash size={20} />
-                      </button>
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    handleDeleteMemoire(memoire.id_memoire, e);
+  }}
+  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+  title="Supprimer"
+>
+  <Trash size={20} />
+</button>
                     </div>
                   </td>
                 </tr>
@@ -699,48 +768,56 @@ const AdminDashboard = () => {
 
         {/* Modal de rejet */}
         {selectedMemoire && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-4">Rejeter le mémoire</h3>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Raison du rejet..."
-                className="w-full h-32 p-2 border rounded-lg mb-4"
-              />
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setSelectedMemoire(null)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={() => handleRejection(selectedMemoire.id_memoire)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  Rejeter
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-xl p-6 max-w-md w-full">
+      <h3 className="text-lg font-semibold mb-4">Rejeter le mémoire</h3>
+      <textarea
+        value={rejectionReason}
+        onChange={(e) => setRejectionReason(e.target.value)}
+        placeholder="Raison du rejet..."
+        className="w-full h-32 p-2 border rounded-lg mb-4"
+      />
+      <div className="flex justify-end space-x-2">
+        <button
+          onClick={() => setSelectedMemoire(null)}
+          className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+        >
+          Annuler
+        </button>
+        <button
+          onClick={() => selectedMemoire && handleRejection(selectedMemoire.id_memoire)}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Rejeter
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </motion.div>
     );
   };
 
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      pending: { color: 'yellow', text: 'En attente' },
-      validated: { color: 'green', text: 'Validé' },
-      rejected: { color: 'red', text: 'Rejeté' }
+  interface StatusBadgeProps {
+    status: 'pending' | 'validated' | 'rejected';
+  }
+  
+  const StatusBadge = ({ status }: StatusBadgeProps) => {
+    const statusClasses = {
+      pending: 'bg-yellow-50 text-yellow-700',
+      validated: 'bg-green-50 text-green-700',
+      rejected: 'bg-red-50 text-red-700'
     };
-
-    const config = statusConfig[status] || statusConfig.pending;
-
+  
+    const statusText = {
+      pending: 'En attente',
+      validated: 'Validé',
+      rejected: 'Rejeté'
+    };
+  
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium bg-${config.color}-50 text-${config.color}-700`}>
-        {config.text}
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusClasses[status]}`}>
+        {statusText[status]}
       </span>
     );
   };
@@ -817,13 +894,13 @@ const AdminDashboard = () => {
           </div>
 
           <div className="mt-auto p-6 border-t">
-            <a
+            <Link
               href="/"
               className="flex items-center w-full p-4 text-gray-600 hover:bg-red-50 rounded-xl transition-colors group"
             >
               <LogOut className="h-5 w-5 text-gray-400 group-hover:text-red-500 mr-3" />
               <span className="font-medium group-hover:text-red-500">Déconnexion</span>
-            </a>
+            </Link>
           </div>
         </div>
       </aside>

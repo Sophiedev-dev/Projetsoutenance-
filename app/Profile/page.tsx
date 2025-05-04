@@ -22,24 +22,24 @@ interface IUser {
   };
 }
 
-const Profile = () => {
-
-interface IUser {
-  user: {
-    id_etudiant: string;
-    name: string;
-    surname: string;
-    email: string;
-    phonenumber: string;
-    university: string;
-    faculty: string;
-    speciality: string;
-  };
+interface Memoire {
+  id_memoire: string;
+  libelle: string;
+  status: 'validated' | 'rejected' | 'pending';
+  date_soumission: string;
+  file_path: string;
 }
 
-const [user, setUser] = useState<IUser | null>(null);
-  const [memoires, setMemoires] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+interface Notification {
+  id_notification: string;
+  message: string;
+  date_creation: string;
+}
+
+const Profile = () => {
+  const [user, setUser] = useState<IUser | null>(null);
+  const [memoires, setMemoires] = useState<Memoire[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({
     name: '',
@@ -60,7 +60,7 @@ const [user, setUser] = useState<IUser | null>(null);
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
+      const parsedUser = JSON.parse(storedUser) as IUser;
       setUser(parsedUser);
       setEditedUser({
         name: parsedUser.user.name || '',
@@ -76,24 +76,24 @@ const [user, setUser] = useState<IUser | null>(null);
     }
   }, []);
 
-  const fetchMemoires = async (userId) => {
+  const fetchMemoires = async (userId: string) => {
     try {
       const response = await fetch(getApiUrl(`/api/memoire/etudiant/${userId}`));
       if (!response.ok) throw new Error('Failed to fetch theses');
       const data = await response.json();
-      setMemoires(data);
+      setMemoires(Array.isArray(data) ? data : data.memoire || []);
     } catch (error) {
       console.error('Error fetching theses:', error);
       toast.error('Failed to load theses');
     }
   };
 
-  const fetchNotifications = async (userId) => {
+  const fetchNotifications = async (userId: string) => {
     try {
       const response = await fetch(getApiUrl(`/api/notifications/${userId}`));
       if (!response.ok) throw new Error('Failed to fetch notifications');
       const data = await response.json();
-      setNotifications(data.notifications);
+      setNotifications(data.notifications || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       toast.error('Failed to load notifications');
@@ -101,6 +101,8 @@ const [user, setUser] = useState<IUser | null>(null);
   };
 
   const handleUpdateProfile = async () => {
+    if (!user) return;
+    
     try {
       const response = await fetch(getApiUrl(`/api/users/${user.user.id_etudiant}`), {
         method: 'PUT',
@@ -124,6 +126,8 @@ const [user, setUser] = useState<IUser | null>(null);
   };
 
   const handlePasswordChange = async () => {
+    if (!user) return;
+    
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -158,37 +162,6 @@ const [user, setUser] = useState<IUser | null>(null);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
-      {/* Sidebar */}
-      {/* <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
-        <div className="flex flex-col h-full">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-blue-600">📚 BANK-MEMO</h1>
-          </div>
-
-          <nav className="flex-1 px-4 space-y-2">
-            {[
-              { name: "Dashboard", path: "./login", icon: <BookOpen className="mr-3" /> },
-              { name: "Profile", path: "./profile", icon: <User className="mr-3" /> }
-            ].map((item, index) => (
-              <a
-                key={index}
-                href={item.path}
-                className="flex items-center px-4 py-2 text-gray-700 hover:bg-blue-50 rounded-lg"
-              >
-                {item.icon}
-                {item.name}
-              </a>
-            ))}
-          </nav>
-
-          <div className="p-4">
-            <a href="/" className="flex items-center text-gray-600 hover:text-blue-600">
-              <ArrowLeft className="mr-2" size={20} />
-              Back to Home
-            </a>
-          </div>
-        </div>
-      </div> */}
       <MySideBar />
       
       {/* Main Content - Updated for responsiveness */}
@@ -225,7 +198,13 @@ const [user, setUser] = useState<IUser | null>(null);
                 Change Password
               </button>
               <button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => {
+                  if (isEditing) {
+                    handleUpdateProfile();
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
                 className="flex items-center justify-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 w-full md:w-auto"
               >
                 <Edit className="mr-2" size={18} />

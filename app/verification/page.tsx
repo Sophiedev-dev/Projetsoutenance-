@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getApiUrl } from "../utils/config";
 
-const Form = () => {
+const FormContent = () => {
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState(null);
-  const [otp, setOtp] = useState(Array(6).fill(""));
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState<string | null>(null);
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+  const [message, setMessage] = useState<string>("");
   const router = useRouter();
 
   useEffect(() => {
@@ -17,14 +17,14 @@ const Form = () => {
     console.log("Email récupéré dans la vérification:", emailFromParams);
   }, [searchParams]);
 
-  const handleChange = (index, value) => {
+  const handleChange = (index: number, value: string) => {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     console.log("OTP complet jusqu'à présent:", newOtp.join(""));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log("OTP saisi:", otp);
 
@@ -50,7 +50,8 @@ const Form = () => {
         setMessage(data.message);
 
         router.push("/Sign");
-      } catch (error) {
+      } catch (_error) {
+        console.error("Erreur de vérification :", _error);
         setMessage("Erreur lors de la vérification. Veuillez réessayer.");
       }
     } else {
@@ -65,6 +66,7 @@ const Form = () => {
           onSubmit={handleSubmit}
           className="backdrop-blur-lg bg-white/80 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 md:space-y-6 border border-gray-100 relative"
         >
+          {/* Le reste de votre JSX reste inchangé */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
               Enter OTP
@@ -74,14 +76,15 @@ const Form = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-2 md:gap-4">
-            {[...Array(6)].map((_, index) => (
+            {otp.map((value, index) => (
               <input
                 key={index}
                 required
                 maxLength={1}
                 type="text"
+                value={value}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(index, e.target.value)}
                 className="w-10 h-10 md:w-12 md:h-12 text-center rounded-lg md:rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none text-base md:text-lg font-semibold"
-                onChange={(e) => handleChange(index, e.target.value)}
               />
             ))}
           </div>
@@ -100,7 +103,7 @@ const Form = () => {
           </button>
 
           <div className="text-center text-xs md:text-sm text-gray-600">
-            Didn't receive the code?{' '}
+            Didn&apos;t receive the code?{' '}
             <button 
               type="button"
               className="font-medium text-blue-600 hover:text-purple-600 transition-colors"
@@ -118,6 +121,14 @@ const Form = () => {
         </form>
       </div>
     </div>
+  );
+};
+
+const Form = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FormContent />
+    </Suspense>
   );
 };
 

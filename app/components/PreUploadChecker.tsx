@@ -1,160 +1,229 @@
-import React, { useState } from 'react';
-import { Upload, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import SimilarityReport from './SimilarityReport';
-import { getApiUrl } from '../utils/config';
+import React, { useState, useEffect } from "react";
+import { Upload, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import SimilarityReport from "./SimilarityReport";
+import { getApiUrl } from "../utils/config";
 
-// Update the interface to include thresholds
-interface SimilarityResult {
-  status: {
-    level: 'danger' | 'warning' | 'success';
-    message: string;
-    color: string;
-    percentage: number;
-    similarity_warning_threshold: number;  
-    similarity_danger_threshold: number;  
-  };
-  results: {
-    id_memoire: number;
-    libelle: string;
-    similarity: number;
-    author: string;
-    email: string;
-    submissionDate: string;
-  }[];
+// Interface pour les éléments de résultat de similarité
+interface SimilarityResultItem {
+  id_memoire: number;
+  name: string; // Important: SimilarityReport attend 'name' et non 'libelle'
+  similarity: number;
+  author: string;
+  submissionDate: string;
 }
 
+// Interface pour le statut de similarité
+interface SimilarityStatus {
+  level: "danger" | "warning" | "success";
+  message: string;
+  color: string;
+  percentage: number;
+  similarity_warning_threshold: number;
+  similarity_danger_threshold: number;
+}
+
+// Interface complète pour le résultat de similarité
+interface SimilarityResult {
+  status: SimilarityStatus;
+  results: SimilarityResultItem[];
+}
+
+// Interface pour les données de réponse API
+interface ApiResponseData {
+  id_memoire: number;
+  libelle: string;
+  name?: string;
+  similarity: number;
+  author: string;
+  email?: string;
+  submissionDate?: string;
+}
+
+// Interface pour les seuils de similarité provenant du serveur
+interface ThresholdData {
+  warningThreshold: number;
+  dangerThreshold: number;
+}
+
+// Props du composant
 interface PreUploadCheckerProps {
-  onSimilarityResult?: (result: { results: { name: string; similarity: number }[]; status: { level: string; message: string } }) => void;
+  onSimilarityResult?: (result: SimilarityResult) => void;
   onFileVerified?: (fileHash: string) => void;
 }
 
-const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult, onFileVerified }) => {
+const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
+  onSimilarityResult,
+  onFileVerified,
+}) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<SimilarityResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [thresholds, setThresholds] = useState<ThresholdData>({
+    warningThreshold: 40,
+    dangerThreshold: 70,
+  });
 
-  // Add the calculateFileHash function
-  const calculateFileHash = async (file: File): Promise<string> => {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // Charger les seuils de similarité au chargement du composant
+  useEffect(() => {
+    fetchThresholds();
+  }, []);
+
+  // Récupérer les seuils de similarité depuis le serveur
+  const fetchThresholds = async (): Promise<void> => {
+    try {
+      const response = await fetch(getApiUrl("/api/admin/similarity-threshold"));
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setThresholds({
+            warningThreshold: data.warningThreshold,
+            dangerThreshold: data.dangerThreshold
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des seuils:", error);
+    }
   };
 
-  // Also add this state for the file hash
-  const [fileHash, setFileHash] = useState<string | null>(null);
+  const calculateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Please upload a PDF file');
+      if (selectedFile.type !== "application/pdf") {
+        setError("Please upload a PDF file");
         return;
       }
-      if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
-        setError('File size must be less than 10MB');
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        // 10MB limit
+        setError("File size must be less than 10MB");
         return;
       }
       setFile(selectedFile);
       setError(null);
+      
+      // Réinitialiser les résultats précédents lorsqu'un nouveau fichier est sélectionné
+      setResult(null);
     }
   };
 
-  
-  const checkSimilarity = async () => {
+  const checkSimilarity = async (): Promise<void> => {
     if (!file) {
-      setError('Veuillez sélectionner un fichier');
+      setError("Veuillez sélectionner un fichier");
       return;
     }
-  
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Calculate file hash
+      // Calculer le hash du fichier
       const hash = await calculateFileHash(file);
-      setFileHash(hash);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
       
-      const response = await fetch(getApiUrl('/api/memoire/check-similarity'), {
-        method: 'POST',
+      // Récupérer les thresholds actuels pour les envoyer avec la requête
+      formData.append("warning_threshold", thresholds.warningThreshold.toString());
+      formData.append("danger_threshold", thresholds.dangerThreshold.toString());
+
+      const response = await fetch(getApiUrl("/api/memoire/check-similarity"), {
+        method: "POST",
         body: formData,
       });
-      
+
       if (!response.ok) {
-        throw new Error('Échec de la vérification');
+        throw new Error("Échec de la vérification");
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
-        throw new Error(data.message || 'Échec de la vérification');
+        throw new Error(data.message || "Échec de la vérification");
       }
-      
-      const resultData = {
-        results: data.results,
+
+      // Déterminer le niveau de similarité en fonction des seuils
+      let level: "success" | "warning" | "danger" = "success";
+      let message = "Similarité acceptable, vous pouvez soumettre votre document";
+      let color = "green";
+      const percentage = data.percentage || 0;
+
+      if (percentage >= thresholds.dangerThreshold) {
+        level = "danger";
+        message = "Similarité élevée détectée! Soumission bloquée.";
+        color = "red";
+      } else if (percentage >= thresholds.warningThreshold) {
+        level = "warning";
+        message = "Niveau de similarité modéré détecté. Vérification recommandée.";
+        color = "orange";
+      }
+
+      // Transformation des données pour correspondre aux interfaces
+      const resultData: SimilarityResult = {
         status: {
-          level: data.status.level,
-          message: data.status.message,
-          color: data.status.color,
-          percentage: data.status.percentage,
-          similarity_warning_threshold: data.status.similarity_warning_threshold,
-          similarity_danger_threshold: data.status.similarity_danger_threshold
-        }
+          level: level,
+          message: message,
+          color: color,
+          percentage: percentage,
+          similarity_warning_threshold: thresholds.warningThreshold,
+          similarity_danger_threshold: thresholds.dangerThreshold,
+        },
+        results: Array.isArray(data.results) ? data.results.map((r: ApiResponseData) => ({
+          id_memoire: r.id_memoire,
+          name: r.name || r.libelle || "Document sans titre",
+          similarity: r.similarity,
+          author: r.author || "",
+          submissionDate: r.submissionDate || "",
+        })) : [],
       };
 
       setResult(resultData);
-      
-      // Envoyer les données correctement structurées au parent
+
       if (onSimilarityResult) {
         onSimilarityResult(resultData);
       }
 
-      setResult({
-        status: data.status,
-        similarResults: data.results.map(r => ({
-          id_memoire: r.id_memoire,
-          name: r.libelle || 'Document sans titre',
-          similarity: r.similarity,
-          author: r.author,
-          email: r.email,
-          submissionDate: r.submissionDate
-        }))
-      });
-
       // Si le seuil de danger est dépassé, réinitialiser le fichier
-      if (data.status.level === 'danger') {
+      if (level === "danger") {
         setFile(null);
-        const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-        if (input) input.value = '';
+        const input = document.querySelector(
+          "input[type='file']"
+        ) as HTMLInputElement;
+        if (input) input.value = "";
       }
-      if (onFileVerified) {
+
+      if (onFileVerified && level !== "danger") {
         onFileVerified(hash);
       }
-
     } catch (err) {
-      console.error('Erreur:', err);
-      setError(err.message || 'Échec de la vérification');
+      console.error("Erreur:", err);
+      setError(
+        err instanceof Error ? err.message : "Échec de la vérification"
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const getStatusColor = (): string => {
+    if (!result) return "";
 
-  const getStatusColor = () => {
-    if (!result) return '';
-    
     switch (result.status.level) {
-      case 'danger':
-        return 'border-red-500 bg-red-50';
-      case 'warning':
-        return 'border-orange-500 bg-orange-50';
-      case 'success':
-        return 'border-green-500 bg-green-50';
+      case "danger":
+        return "border-red-500 bg-red-50";
+      case "warning":
+        return "border-orange-500 bg-orange-50";
+      case "success":
+        return "border-green-500 bg-green-50";
       default:
-        return '';
+        return "";
     }
   };
 
@@ -163,9 +232,10 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult,
       <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
         <h3 className="font-medium mb-2">Pre-submission Similarity Check</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Before submitting your thesis, check if it has similarities with existing documents in our database.
+          Before submitting your thesis, check if it has similarities with
+          existing documents in our database.
         </p>
-        
+
         <div className="flex space-x-3 mb-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -210,26 +280,42 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({ onSimilarityResult,
             <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
               <div className="w-1/3 h-full bg-blue-600 animate-pulse"></div>
             </div>
-            <p className="text-sm text-center mt-1 text-gray-600">Analyzing document...</p>
+            <p className="text-sm text-center mt-1 text-gray-600">
+              Analyzing document...
+            </p>
           </div>
         )}
 
         {result && !loading && (
           <>
-            <div className={`p-3 border rounded-md mb-4 flex items-center ${getStatusColor()}`}>
-              {result.status.level === 'danger' && <AlertCircle className="w-5 h-5 text-red-500 mr-2" />}
-              {result.status.level === 'warning' && <AlertTriangle className="w-5 h-5 text-orange-500 mr-2" />}
-              {result.status.level === 'success' && <CheckCircle className="w-5 h-5 text-green-500 mr-2" />}
+            <div
+              className={`p-3 border rounded-md mb-4 flex items-center ${getStatusColor()}`}
+            >
+              {result.status.level === "danger" && (
+                <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+              )}
+              {result.status.level === "warning" && (
+                <AlertTriangle className="w-5 h-5 text-orange-500 mr-2" />
+              )}
+              {result.status.level === "success" && (
+                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+              )}
               <span className="text-sm">{result.status.message}</span>
             </div>
             
-            <SimilarityReport similarityData={{
-              results: result.similarResults,
-              status: result.status
-            }} />
+            <SimilarityReport 
+              similarityData={result} 
+              onSimilarityValidation={(isValid) => {
+                // Si onFileVerified existe et que la similarité est valide
+                if (onFileVerified && file && isValid) {
+                  calculateFileHash(file).then(hash => {
+                    onFileVerified(hash);
+                  });
+                }
+              }}
+            />
           </>
         )}
-        
       </div>
     </div>
   );

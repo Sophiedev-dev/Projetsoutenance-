@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search, ShoppingCart, User, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X } from 'lucide-react';
+import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
-import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import "@react-pdf-viewer/core/lib/styles/index.css";
@@ -14,34 +13,55 @@ import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MentionStars } from './components/MentionStars';
-import DocumentVerifier from './components/DocumentVerifier';
+// import DocumentVerifier from './components/DocumentVerifier';
 import { getApiUrl } from './utils/config';
 
-const Homepage = () => {
+// Définition des interfaces
+interface Memoire {
+  id_memoire: string;
+  libelle: string;
+  file_path: string;
+  signature?: string;
+  hasSignature?: boolean;
+  date_soumission?: string;
+  cycle?: string;
+  speciality?: string;
+  university?: string;
+  mention?: string;
+  etudiant_nom?: string;
+}
+
+interface Stats {
+  memoires: number;
+  chercheurs: number;
+  specialites: number;
+}
+
+interface Thumbnails {
+  [key: string]: string;
+}
+
+const Homepage: React.FC = () => {
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [thumbnails, setThumbnails] = useState({});
-  const [memoires, setMemoires] = useState([]);
-  const [selectedMemoire, setSelectedMemoire] = useState(null);
-  const [isClient, setIsClient] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [selectedCycle, setSelectedCycle] = useState('');
-  const [activeTab, setActiveTab] = useState('accueil');
-  const [selectedSpeciality, setSelectedSpeciality] = useState('');
-  const [stats, setStats] = useState({
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [thumbnails, setThumbnails] = useState<Thumbnails>({});
+  const [memoires, setMemoires] = useState<Memoire[]>([]);
+  const [selectedMemoire, setSelectedMemoire] = useState<Memoire | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedCycle, setSelectedCycle] = useState<string>('');
+  const [selectedSpeciality, setSelectedSpeciality] = useState<string>('');
+  const [stats, setStats] = useState<Stats>({
     memoires: 0,
     chercheurs: 0,
     specialites: 0,
   });
-  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   useEffect(() => {
-    setIsClient(true);
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = async (): Promise<void> => {
     try {
       const response = await fetch(getApiUrl('/api/stats'));
       if (!response.ok) {
@@ -54,32 +74,19 @@ const Homepage = () => {
         specialites: data.specialites || 0,
       });
     } catch (error) {
-      console.error("Erreur lors de la récupération des statistiques :", error.message);
+      console.error("Erreur lors de la récupération des statistiques :", error instanceof Error ? error.message : String(error));
     }
   };
 
-  
-  //   if (!query.trim()) {
-  //     setSuggestions([]);
-  //     return;
-  //   }
-
-  //   try {
-  //     const response = await fetch(`http://localhost:5000/api/memoire/suggestions?q=${encodeURIComponent(query)}`);
-  //     if (!response.ok) {
-  //       throw new Error(`Erreur serveur : ${response.status}`);
-  //     }
-
-  //     const data = await response.json();
-  //     setSuggestions(data.suggestions || []);
-  //   } catch (error) {
-  //     console.error("Erreur lors de la récupération des suggestions :", error);
-  //   }
-  // };
-
-  const fetchMemoires = async (status = "validated", cycle = "", search = "", sortBy = "libelle", sortOrder = "asc") => {
+  const fetchMemoires = async (
+    status = "validated", 
+    cycle = "", 
+    search = "", 
+    sortBy = "libelle", 
+    sortOrder = "asc"
+  ): Promise<void> => {
     try {
-      let url = new URL(getApiUrl('/api/memoire/memoire'));
+      const url = new URL(getApiUrl('/api/memoire/memoire'));
       
       // Add query parameters
       const params = new URLSearchParams();
@@ -100,14 +107,14 @@ const Homepage = () => {
   
       // Map the data to include signature information
       if (data && Array.isArray(data.memoire)) {
-        const memoiresWithSignatures = data.memoire.map(memoire => ({
+        const memoiresWithSignatures = data.memoire.map((memoire: Memoire) => ({
           ...memoire,
           hasSignature: Boolean(memoire.signature)
         }));
         setMemoires(memoiresWithSignatures);
       }
     } catch (error) {
-      console.error("Erreur lors de la récupération des mémoires :", error.message);
+      console.error("Erreur lors de la récupération des mémoires :", error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -119,11 +126,7 @@ const Homepage = () => {
     }
   }, [searchTerm]);
 
-  //   fetchSuggestions(value);
-
-  // };
-
-  const handleSearchChange = async (e) => {
+  const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const value = e.target.value;
     setSearchTerm(value);
   
@@ -140,35 +143,54 @@ const Homepage = () => {
       const data = await response.json();
       setSuggestions(data);
     } catch (error) {
-      console.error("Erreur lors de la récupération des suggestions :", error);
+      console.error("Erreur lors de la récupération des suggestions :", error instanceof Error ? error.message : String(error));
       setSuggestions([]);
     }
   };
 
-  const getPdfThumbnail = async (pdfUrl) => {
-    const loadingTask = pdfjsLib.getDocument(pdfUrl);
-    const pdf = await loadingTask.promise;
-    const page = await pdf.getPage(1);
+  const getPdfThumbnail = async (pdfUrl: string): Promise<string> => {
+    try {
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
 
-    const viewport = page.getViewport({ scale: 1.5 });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
 
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+      if (!context) {
+        throw new Error("Impossible de créer le contexte du canvas");
+      }
 
-    await page.render({ canvasContext: context, viewport }).promise;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
 
-    return canvas.toDataURL("image/png");
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      return canvas.toDataURL("image/png");
+    } catch (error) {
+      console.error("Erreur lors de la génération de la miniature :", error);
+      return ""; // Retourne une chaîne vide en cas d'erreur
+    }
   };
 
   useEffect(() => {
     memoires.forEach(async (memoire) => {
-      const thumbnail = await getPdfThumbnail(getApiUrl(`/${memoire.file_path}`));
-      setThumbnails((prev) => ({ ...prev, [memoire.id_memoire]: thumbnail }));
+      try {
+        const thumbnail = await getPdfThumbnail(getApiUrl(`/${memoire.file_path}`));
+        setThumbnails((prev) => ({ ...prev, [memoire.id_memoire]: thumbnail }));
+      } catch (error) {
+        console.error(`Erreur pour la miniature de ${memoire.id_memoire}:`, error);
+      }
     });
   }, [memoires]);
 
+  const scrollToSection = (id: string): void => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   return (
     <div id="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -235,16 +257,13 @@ const Homepage = () => {
               {/* Desktop Navigation */}
               <nav className="hidden md:flex items-center space-x-4">
                 {[
-                  { name: 'Mémoires', icon: BookOpen, id: "bibliotheque" },
-                  { name: 'Collections', icon: Award, id: "collections" },
+                  { name: "Mémoires", icon: BookOpen, id: "bibliotheque" },
+                  { name: "Collections", icon: Award, id: "collections" },
                 ].map((item) => (
                   <button
                     key={item.name}
                     className="px-4 py-2 text-gray-600 hover:text-indigo-600 flex items-center gap-2"
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
-                    }}
+                    onClick={() => scrollToSection(item.id)}
                   >
                     <item.icon className="h-5 w-5" />
                     <span>{item.name}</span>
@@ -293,17 +312,13 @@ const Homepage = () => {
             >
               <div className="px-4 py-3 space-y-3">
                 {[
-                  { name: 'Mémoires', icon: BookOpen, id: "bibliotheque" },
-                  { name: 'Collections', icon: Award, id: "collections" },
+                  { name: "Mémoires", icon: BookOpen, id: "bibliotheque" },
+                  { name: "Collections", icon: Award, id: "collections" },
                 ].map((item) => (
                   <button
                     key={item.name}
                     className="w-full px-4 py-2 text-left text-gray-600 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => scrollToSection(item.id)}
                   >
                     <item.icon className="h-5 w-5" />
                     <span>{item.name}</span>
@@ -339,19 +354,161 @@ const Homepage = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center">
           <motion.div
-            initial={{ x: -100 }}
-            animate={{ x: 0 }}
-            className="w-full md:w-2/3 lg:w-1/2 relative z-10"
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="w-full md:w-3/5 lg:w-1/2 text-white z-10"
           >
-            <h1 className="text-5xl md:text-7xl font-black mb-6 text-white leading-tight">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                Bibliothèque
-              </span>
-              <br />
-              <span className="text-3xl md:text-4xl">Université de Yaoundé I</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+              La bibliothèque numérique des mémoires
             </h1>
-            <p className="text-xl text-gray-200 mb-8 font-light max-w-xl">
-              Découvrez notre collection de travaux académiques et contribuez à l'excellence universitaire.
+            <p className="text-lg md:text-xl opacity-80 mb-8">
+              Explorez, recherchez et consultez des milliers de mémoires académiques dans notre base de données sécurisée.
+            </p>
+            <div className="flex flex-wrap gap-4 mb-8">
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-2xl font-bold">{stats.memoires}</span>
+                  <p className="text-sm opacity-70">Mémoires</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center">
+                  <UserCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-2xl font-bold">{stats.chercheurs}</span>
+                  <p className="text-sm opacity-70">Chercheurs</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-amber-600 flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-2xl font-bold">{stats.specialites}</span>
+                  <p className="text-sm opacity-70">Spécialités</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <button 
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium flex items-center gap-2"
+                onClick={() => scrollToSection("bibliotheque")}
+              >
+                <BookOpen className="w-5 h-5" />
+                Explorer les mémoires
+              </button>
+              <a 
+                href="/Verif" 
+                className="px-6 py-3 bg-white hover:bg-gray-200 text-indigo-900 rounded-lg font-medium flex items-center gap-2"
+              >
+                <ShieldCheck className="w-5 h-5" />
+                Vérifier un document
+              </a>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Deuxième section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="relative py-12 sm:py-16 lg:py-20 overflow-hidden"
+      >
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <motion.h2
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-6"
+            >
+              Trouvez la connaissance académique dont vous avez besoin
+            </motion.h2>
+            <motion.p
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="text-lg text-gray-600 max-w-2xl mx-auto"
+            >
+              Notre plateforme centralise les mémoires académiques et propose des outils de vérification anti-plagiat.
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12"
+          >
+            {/* Feature Cards */}
+            {[
+              {
+                icon: BookOpen,
+                title: "Bibliothèque Numérique",
+                description: "Accédez à des milliers de mémoires académiques classés et vérifiés.",
+                color: "from-blue-500 to-cyan-400"
+              },
+              {
+                icon: ShieldCheck,
+                title: "Vérification Anti-Plagiat",
+                description: "Vérifiez l'originalité de vos documents grâce à notre technologie avancée.",
+                color: "from-emerald-500 to-teal-400"
+              },
+              {
+                icon: GraduationCap,
+                title: "Classification par Disciplines",
+                description: "Trouvez facilement des travaux dans votre domaine d'études ou de recherche.",
+                color: "from-orange-500 to-amber-400"
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                whileHover={{ y: -10 }}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-xl p-6 border border-gray-100 transition-all duration-300"
+              >
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6`}>
+                  <feature.icon className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">{feature.title}</h3>
+                <p className="text-gray-600">{feature.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Ajoutez votre recherche - Section CTA */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        className="bg-gradient-to-r from-indigo-600 to-purple-600 py-16 relative overflow-hidden"
+      >
+        {/* Cercles decoratifs */}
+        <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-indigo-500 opacity-20" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-purple-500 opacity-20" />
+
+        <div className="max-w-7xl mx-auto px-4 relative z-10">
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center text-white"
+          >
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
+              Contribuez à notre base de connaissances
+            </h2>
+            <p className="text-lg lg:text-xl opacity-90 max-w-3xl mx-auto mb-8">
+              Déposez votre mémoire ou thèse académique et faites profiter la communauté de vos recherches.
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -406,203 +563,170 @@ const Homepage = () => {
                   <GraduationCap className="w-5 h-5 mr-2 text-indigo-600" />
                   Filtrer par cycle
                 </h3>
-                <div className="flex flex-wrap gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      setSelectedCycle('');
-                      setSelectedSpeciality('');
-                    }}
-                    className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                      selectedCycle === '' 
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
-                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                    }`}
-                  >
-                    Tous les cycles
-                  </motion.button>
-                  {['Bachelor', 'Master', 'PhD'].map((cycle) => (
-                    <motion.button
+                <div className="flex flex-wrap gap-2">
+                  {["Bachelor", "Master", "Doctorat"].map((cycle) => (
+                    <button
                       key={cycle}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       onClick={() => {
-                        setSelectedCycle(cycle);
-                        setSelectedSpeciality('');
+                        setSelectedCycle(selectedCycle === cycle ? '' : cycle);
+                        fetchMemoires('validated', selectedCycle === cycle ? '' : cycle, searchTerm);
                       }}
-                      className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                        selectedCycle === cycle 
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
-                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedCycle === cycle
+                          ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
                       }`}
                     >
                       {cycle}
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               </div>
 
-              {/* Specialities filter - Animated appearance */}
-              {selectedCycle && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-                    <BookOpen className="w-5 h-5 mr-2 text-purple-600" />
-                    Spécialités en {selectedCycle}
-                  </h3>
-                  <div className="flex flex-wrap gap-3">
-                    {[...new Set(memoires
-                      .filter(m => m.cycle === selectedCycle)
-                      .map(m => m.speciality))]
-                      .map((speciality) => (
-                        <motion.button
-                          key={speciality}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setSelectedSpeciality(speciality)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                            selectedSpeciality === speciality 
-                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg' 
-                            : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                          }`}
-                        >
-                          {speciality}
-                        </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
+              {/* Specialities filter */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
+                  <BookOpen className="w-5 h-5 mr-2 text-indigo-600" />
+                  Filtrer par spécialité
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {["Informatique", "Marketing", "Finance", "Droit", "Médecine"].map((spec) => (
+                    <button
+                      key={spec}
+                      onClick={() => setSelectedSpeciality(selectedSpeciality === spec ? '' : spec)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        selectedSpeciality === spec
+                          ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
+                      }`}
+                    >
+                      {spec}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Keep your existing memoires display code */}
-        {['Bachelor', 'Master', 'PhD'].map((cycle) => {
-          if (selectedCycle && selectedCycle !== cycle) return null;
+          {/* Group by Cycle then by Speciality */}
+          {["Bachelor", "Master", "Doctorat"].map((cycle) => {
+            // Filter memoires by current cycle
+            const cycleMemoires = memoires.filter(
+              (memoire) => !selectedCycle || memoire.cycle === cycle
+            );
 
-          const cycleMemoires = memoires.filter(memoire => {
-            const matchesCycle = selectedCycle ? memoire.cycle === cycle : true;
-            const matchesSpeciality = selectedSpeciality ? memoire.speciality === selectedSpeciality : true;
-            return matchesCycle && matchesSpeciality;
-          });
+            // Skip if no memoires in this cycle or if a different cycle is selected
+            if (cycleMemoires.length === 0 || (selectedCycle && selectedCycle !== cycle)) {
+              return null;
+            }
 
-          if (cycleMemoires.length === 0) return null;
+            // Get all unique specialities in this cycle
+            const specialities = Array.from(
+              new Set(cycleMemoires.map((memoire) => memoire.speciality || "Non spécifié"))
+            );
 
-          const specialities = [...new Set(cycleMemoires.map(memoire => memoire.speciality))];
+            return (
+              <div key={cycle} className="mb-16">
+                <h3 className="text-2xl font-bold text-gray-800 mb-8 flex items-center">
+                  <GraduationCap className="w-6 h-6 mr-2 text-indigo-600" />
+                  {cycle}
+                </h3>
 
-          return (
-            <div key={cycle} className="mb-16">
-              <div className="flex items-center space-x-4 mb-8">
-                <h3 className="text-2xl font-semibold text-gray-800">{cycle}</h3>
-                <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
-              </div>
+                {specialities.map((speciality) => (
+                  <div key={speciality} className="mb-10">
+                    <div className="mb-6 border-l-4 border-purple-500 pl-4">
+                      <h4 className="text-xl font-medium text-gray-700 mb-6 pl-4 border-l-4 border-purple-500">
+                        {speciality}
+                      </h4>
 
-              {/* Keep your existing specialities and memoires rendering code */}
-              {specialities.map(speciality => (
-                <div key={`${cycle}-${speciality}`} className="mb-12">
-                  <h4 className="text-xl font-medium text-gray-700 mb-6 pl-4 border-l-4 border-purple-500">
-                    {speciality}
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                    {cycleMemoires
-                      .filter(memoire => memoire.speciality === speciality)
-                      .map((memoire) => (
-                        // Your existing memoire card component with all its functionality
-                        <div
-                          key={memoire.id_memoire}
-                          className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
-                          onClick={() => router.push(`/memoire/${memoire.id_memoire}`)}
-                        >
-                          <div className="relative w-full h-56 overflow-hidden bg-gray-50">
-                            {thumbnails[memoire.id_memoire] ? (
-                              <div className="relative w-full h-full">
-                                <Image
-                                  src={thumbnails[memoire.id_memoire]}
-                                  alt="PDF Cover"
-                                  width={300}
-                                  height={300}
-                                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                        {cycleMemoires
+                          .filter(memoire => memoire.speciality === speciality)
+                          .map((memoire) => (
+                            // Your existing memoire card component with all its functionality
+                            <div
+                              key={memoire.id_memoire}
+                              className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+                              onClick={() => router.push(`/memoire/${memoire.id_memoire}`)}
+                            >
+                              <div className="relative w-full h-56 overflow-hidden bg-gray-50">
+                                {thumbnails[memoire.id_memoire] ? (
+                                  <div className="relative w-full h-full">
+                                    <Image
+                                      src={thumbnails[memoire.id_memoire]}
+                                      alt="PDF Cover"
+                                      width={300}
+                                      height={300}
+                                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <div className="animate-pulse flex flex-col items-center">
+                                      <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                                      <span className="text-sm text-gray-400">Chargement...</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <div className="animate-pulse flex flex-col items-center">
-                                  <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                                  <span className="text-sm text-gray-400">Chargement...</span>
+
+                              <div className="mb-3">
+                                {memoire.mention ? (
+                                <MentionStars mention={memoire.mention as "Passable" | "Bien" | "Tres Bien" | "Excellent" | null} size="sm" />
+                                ) : (
+                              <span className="text-sm text-gray-500">Non noté</span>
+                              )}
+                            </div>
+
+                              <div className="p-5">
+                                <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
+                                  {memoire.libelle}
+                                </h4>
+
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                  <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+                                    {memoire.speciality || "Non spécifié"}
+                                  </span>
+                                  {memoire.hasSignature && (
+                                    <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full flex items-center">
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      Certifié
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-gray-500">
+                                    {memoire.date_soumission && format(new Date(memoire.date_soumission), "dd MMM yyyy", { locale: fr })}
+                                  </span>
+                                  <span className="text-xs font-medium text-gray-700">
+                                    {memoire.etudiant_nom || "Auteur inconnu"}
+                                  </span>
                                 </div>
                               </div>
-                            )}
-                          </div>
-
-                          <div className="mb-3">
-                            {memoire.mention ? (
-                            <MentionStars mention={memoire.mention} size="sm" />
-                            ) : (
-                           <span className="text-sm text-gray-500">Non noté</span>
-                           )}
-                         </div>
-
-                          <div className="p-5">
-                            <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
-                              {memoire.libelle}
-                            </h4>
-
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
-                                {memoire.cycle}
-                              </span>
-                              <span className="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-medium rounded-full">
-                                {memoire.speciality}
-                              </span>
                             </div>
-
-                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                              <span className="text-sm font-medium text-gray-500">
-                                {memoire.annee}
-                              </span>
-                              <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm rounded-full hover:shadow-lg transform hover:scale-105 transition-all">
-                                Consulter
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })}
-
-        {selectedMemoire && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white w-11/12 lg:w-2/3 xl:w-1/2 h-[90vh] rounded-lg overflow-hidden shadow-xl">
-              <div className="flex justify-between items-center p-4 border-b">
-                <div className="flex flex-col">
-                  <h2 className="font-bold text-lg">{selectedMemoire.libelle}</h2>
-                  <div className="mt-2 text-sm">
-                    <div className="flex items-center text-green-600">
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      <span>Document signé et validé</span>
-                    </div>
-                    <div className="text-gray-600">
-                      Signé par {selectedMemoire.details?.signedBy} le {' '}
-                      {selectedMemoire.details?.signedAt ?
-                        format(new Date(selectedMemoire.details.signedAt), 'dd MMMM yyyy', { locale: fr })
-                        : 'Date non disponible'
-                      }
+                          ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <button
-                  className="text-gray-500 hover:text-gray-700"
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modal de prévisualisation */}
+      {selectedMemoire && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-6xl rounded-xl shadow-2xl overflow-hidden">
+              <div className="flex justify-between items-center p-4 bg-gray-50 border-b">
+                <h3 className="text-xl font-bold text-gray-800">{selectedMemoire.libelle}</h3>
+                <button 
                   onClick={() => setSelectedMemoire(null)}
+                  className="p-1 hover:bg-gray-200 rounded-full"
                 >
                   ✕
                 </button>
@@ -628,8 +752,8 @@ const Homepage = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
