@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps, @typescript-eslint/no-unused-vars */
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,21 +20,6 @@ interface Memoire {
   file_path: string;
 }
 
-interface MatchingPhrase {
-  text: string;
-  sourceIndex: number;
-  targetIndex: number;
-}
-
-interface SimilarityMatch {
-  sourceText: string;
-  targetText: string;
-  similarity: number;
-  sourcePage?: number;
-  targetPage?: number;
-  matchingPhrases?: MatchingPhrase[];
-}
-
 interface User {
   user: {
     id_etudiant: string;
@@ -55,7 +38,7 @@ interface NewMemoire {
   file: File | null;
 }
 
-// Interface pour les résultats de similarité
+// Mise à jour pour correspondre avec PreUploadChecker
 interface SimilarityResultItem {
   id_memoire: number;
   name: string;
@@ -78,25 +61,15 @@ interface SimilarityResult {
   results: SimilarityResultItem[];
 }
 
-// Interface pour les données détaillées de similarité
-interface DetailedSimilarityData {
+
+// Interface pour les résultats de similarité détaillés
+interface SimilarityMatchResult {
   sourceText?: string;
   targetText?: string;
   similarity: number;
-  sourceMemoireTitle: string;
-  targetMemoireTitle: string;
-  matches: Array<{
-    sourceText: string;
-    targetText: string;
-    similarity: number;
-    sourcePage?: number;
-    targetPage?: number;
-    matchingPhrases?: Array<{
-      text: string;
-      sourceIndex: number;
-      targetIndex: number;
-    }>;
-  }>;
+  sourcePage?: number;
+  targetPage?: number;
+  matchingPhrases?: string[];
 }
 
 function App() {
@@ -138,11 +111,9 @@ function App() {
     }
   }, []);
 
-  // Fonction appelée lorsque le fichier a été vérifié avec succès
   const handleFileVerified = (fileHash: string) => {
     setVerifiedFileHash(fileHash);
     setIsFileVerified(true);
-    toast.success("Document vérifié avec succès");
   };
 
   const fetchMemoires = async (userId: string) => {
@@ -174,33 +145,53 @@ function App() {
     }
   };
 
-  // Fonction pour afficher le rapport détaillé de similarité
+  // Update the DetailedSimilarityData interface
+  interface DetailedSimilarityData {
+    sourceText?: string;
+    targetText?: string;
+    similarity: number;
+    sourceMemoireTitle: string;
+    targetMemoireTitle: string;
+    matches: Array<{
+      sourceText: string;
+      targetText: string;
+      similarity: number;
+      sourcePage?: number;
+      targetPage?: number;
+      matchingPhrases?: Array<{
+        text: string;
+        sourceIndex: number;
+        targetIndex: number;
+      }>;
+    }>;
+  }
+  
+  // Update the handleViewSimilarityReport function to match the new type
   const handleViewSimilarityReport = async (memoire: Memoire) => {
     try {
       setSelectedMemoire(memoire);
       const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity`));
       
       if (!response.ok) {
-        throw new Error(`Erreur serveur (${response.status})`);
+        throw new Error(`Server error (${response.status})`);
       }
       
       const data = await response.json();
       
       if (data.success) {
-        // Transformation des données pour correspondre à l'interface DetailedSimilarityData
         const processedData: DetailedSimilarityData = {
           similarity: data.similarity || data.percentage || 0,
-          matches: Array.isArray(data.matches) ? data.matches.map((match: SimilarityMatch) => ({
-            sourceText: match.sourceText || '',
-            targetText: match.targetText || '',
-            similarity: match.similarity || 0,
-            sourcePage: match.sourcePage,
-            targetPage: match.targetPage,
-            matchingPhrases: match.matchingPhrases?.map((phrase: MatchingPhrase | string) => ({
-              text: typeof phrase === 'string' ? phrase : phrase.text || '',
-              sourceIndex: typeof phrase === 'string' ? 0 : phrase.sourceIndex || 0,
-              targetIndex: typeof phrase === 'string' ? 0 : phrase.targetIndex || 0
-            }))
+          matches: Array.isArray(data.results) ? data.results.map((result: SimilarityMatchResult) => ({
+            sourceText: result.sourceText || '',
+            targetText: result.targetText || '',
+            similarity: result.similarity || 0,
+            sourcePage: result.sourcePage || 0,
+            targetPage: result.targetPage || 0,
+            matchingPhrases: result.matchingPhrases?.map(phrase => ({
+              text: phrase,
+              sourceIndex: 0,
+              targetIndex: 0
+            })) || []
           })) : [],
           targetMemoireTitle: data.targetMemoireTitle || 'Document de référence',
           sourceMemoireTitle: memoire.libelle
@@ -217,20 +208,18 @@ function App() {
     }
   };
 
-  // Gestion du changement de fichier dans le formulaire
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
-        toast.error('Veuillez télécharger un fichier PDF');
+        toast.error('Please upload a PDF file');
         return;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error('La taille du fichier doit être inférieure à 10 Mo');
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
         return;
       }
       
-      // Réinitialiser les états de vérification
       setIsFileVerified(false);
       setVerifiedFileHash(null);
       setSimilarityData(null);
@@ -238,28 +227,26 @@ function App() {
       setNewMemoire(prev => ({ ...prev, file }));
       setFilePreview(URL.createObjectURL(file));
       
-      toast.info('⚠️ Veuillez vérifier votre document en utilisant le vérificateur ci-dessus', {
+      toast.info('⚠️ Please verify your document using the checker above', {
         position: "top-center",
         autoClose: 5000,
       });
     }
   };
 
-  // Gestion des résultats de similarité
+  // Corrigé pour accepter SimilarityResult au lieu de SimilarityData
   const handleSimilarityResult = (data: SimilarityResult) => {
     setSimilarityData(data);
     
-    // Afficher un toast selon le niveau de similarité
     if (data.status.level === 'danger') {
-      toast.error(`Similarité élevée détectée: ${data.status.percentage.toFixed(1)}%`);
+      toast.error(`High similarity detected: ${data.status.percentage.toFixed(1)}%`);
     } else if (data.status.level === 'warning') {
-      toast.warning(`Similarité modérée détectée: ${data.status.percentage.toFixed(1)}%`);
+      toast.warning(`Moderate similarity detected: ${data.status.percentage.toFixed(1)}%`);
     } else {
-      toast.success(`Similarité faible détectée: ${data.status.percentage.toFixed(1)}%`);
+      toast.success(`Low similarity detected: ${data.status.percentage.toFixed(1)}%`);
     }
   };
 
-  // Réinitialisation du formulaire
   const resetFormStates = () => {
     setNewMemoire({
       libelle: '',
@@ -278,7 +265,6 @@ function App() {
     setIsSubmitting(false);
   };
   
-  // Fonction pour calculer le hash d'un fichier
   const calculateFileHash = async (file: File): Promise<string> => {
     const buffer = await file.arrayBuffer();
     const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
@@ -286,29 +272,24 @@ function App() {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  // Soumission du formulaire
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
   
-    // Vérifier si le fichier a été vérifié
     if (!isFileVerified) {
       toast.error('Veuillez vérifier votre document avant de le soumettre');
       return;
     }
   
-    // Bloquer la soumission si le taux de similarité est trop élevé
     if (similarityData?.status?.level === 'danger') {
-      toast.error(`Soumission impossible : Le taux de similarité (${similarityData.status.percentage.toFixed(1)}%) dépasse le seuil autorisé (${similarityData.status.similarity_danger_threshold}%)`);
+      toast.error(`Soumission impossible : Le taux de similarité (${similarityData.status.percentage}%) dépasse le seuil autorisé (${similarityData.status.similarity_danger_threshold}%)`);
       return;
     }
     
-    // Vérifier si un fichier est sélectionné
     if (!newMemoire.file) {
       toast.error('Veuillez sélectionner un fichier PDF');
       return;
     }
 
-    // Vérifier que le fichier soumis est bien celui qui a été vérifié
     const currentFileHash = await calculateFileHash(newMemoire.file);
     if (currentFileHash !== verifiedFileHash) {
       toast.error('Le document soumis est différent de celui vérifié. Veuillez revérifier votre document.');
@@ -326,11 +307,6 @@ function App() {
   
       const userData = JSON.parse(storedUser) as User;
       const formData = new FormData();
-      
-      // Add file_name field
-      formData.append('file_name', newMemoire.file.name);
-      
-      // Add other fields
       formData.append('libelle', newMemoire.libelle);
       formData.append('annee', newMemoire.annee);
       formData.append('cycle', newMemoire.cycle);
@@ -338,7 +314,9 @@ function App() {
       formData.append('university', newMemoire.university);
       formData.append('description', newMemoire.description);
       formData.append('mention', newMemoire.mention);
-      formData.append('file', newMemoire.file);
+      if (newMemoire.file) {
+        formData.append('file', newMemoire.file);
+      }
       formData.append('id_etudiant', userData.user.id_etudiant);
       formData.append('status', 'pending');
   
@@ -360,7 +338,6 @@ function App() {
       setShowForm(false);
       resetFormStates();
       
-      // Rafraîchir la liste des mémoires
       if (userData.user && userData.user.id_etudiant) {
         fetchMemoires(userData.user.id_etudiant);
       } else {
@@ -369,14 +346,13 @@ function App() {
       }
       
     } catch (error) {
-      console.error('Erreur de soumission:', error);
+      console.error('Submission error:', error);
       toast.error(error instanceof Error ? error.message : 'Une erreur inattendue est survenue');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Suppression d'un mémoire
   const handleDeleteMemoire = async (memoireId: string) => {
     try {
       const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce mémoire ?');
@@ -409,7 +385,6 @@ function App() {
     }
   };
 
-  // Récupération de l'icône de statut
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'validated':
@@ -421,319 +396,387 @@ function App() {
     }
   };
 
-  // Récupération du texte de statut
-  const getStatusText = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'validated':
-        return 'Validé';
+        return 'bg-green-100 text-green-800';
       case 'rejected':
-        return 'Rejeté';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'En attente';
+        return 'bg-yellow-100 text-yellow-800';
     }
   };
 
   const filteredMemoires = memoires.filter(memoire => 
     memoire.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    memoire.university.toLowerCase().includes(searchTerm.toLowerCase()) ||
     memoire.speciality.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
       <MySideBar />
-      
-      <div className="p-4 sm:ml-64">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Gestion des Mémoires</h1>
-          <p className="text-gray-600">Soumettez et gérez vos mémoires</p>
-        </div>
-        
-        <div className="mb-4 flex justify-between">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Rechercher un mémoire..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <FileText className="absolute left-3 top-3 text-gray-400" size={16} />
+      <div className="lg:ml-64 p-4 md:p-8 transition-all duration-300">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+              Welcome {user?.user?.name || 'Student'}!
+            </h2>
+            <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
-          
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+            onClick={() => setShowForm(true)}
+            className="w-full md:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
           >
-            {showForm ? <X className="mr-2" size={16} /> : <Upload className="mr-2" size={16} />}
-            {showForm ? 'Annuler' : 'Soumettre un mémoire'}
+            <Upload className="mr-2" size={20} />
+            Submit New Thesis
           </button>
         </div>
-        
+
         {showForm && (
-          <div className="mb-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Soumettre un nouveau mémoire</h2>
-            
-            {/* PreUploadChecker */}
-            <PreUploadChecker 
-              onSimilarityResult={handleSimilarityResult}
-              onFileVerified={handleFileVerified}
-            />
-            
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Titre du mémoire
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newMemoire.libelle}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, libelle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Année
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newMemoire.annee}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, annee: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cycle
-                  </label>
-                  <select
-                    required
-                    value={newMemoire.cycle}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, cycle: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Bachelor">Bachelor</option>
-                    <option value="Master">Master</option>
-                    <option value="Doctorat">Doctorat</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Spécialité
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newMemoire.speciality}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, speciality: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Université
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newMemoire.university}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, university: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mention
-                  </label>
-                  <select
-                    required
-                    value={newMemoire.mention}
-                    onChange={(e) => setNewMemoire(prev => ({ ...prev, mention: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sélectionnez une mention</option>
-                    <option value="Passable">Passable</option>
-                    <option value="Assez bien">Assez bien</option>
-                    <option value="Bien">Bien</option>
-                    <option value="Très bien">Très bien</option>
-                    <option value="Excellent">Excellent</option>
-                  </select>
-                </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">Submit New Thesis</h3>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  value={newMemoire.description}
-                  onChange={(e) => setNewMemoire(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fichier PDF
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-blue-50 file:text-blue-600
-                    hover:file:bg-blue-100"
-                />
-              </div>
-              
-              {filePreview && (
-                <div className="mb-4 p-4 border border-gray-200 rounded-lg">
-                  <a href={filePreview} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center">
-                    <FileText className="mr-2" size={16} />
-                    Aperçu du document
-                  </a>
+
+              <PreUploadChecker 
+                onSimilarityResult={handleSimilarityResult} 
+                onFileVerified={handleFileVerified}
+              />
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      name="libelle"
+                      value={newMemoire.libelle}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, libelle: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Year
+                    </label>
+                    <input
+                      type="number"
+                      name="annee"
+                      value={newMemoire.annee}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, annee: e.target.value }))}
+                      min={2000}
+                      max={2100}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cycle
+                    </label>
+                    <select
+                      name="cycle"
+                      value={newMemoire.cycle}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, cycle: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    >
+                      <option value="Bachelor">Bachelor</option>
+                      <option value="Master">Master</option>
+                      <option value="PhD">PhD</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Speciality
+                    </label>
+                    <select
+                      name="speciality"
+                      value={newMemoire.speciality}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, speciality: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    >
+                      <option value="">Sélectionnez une spécialité</option>
+                      <option value="Genie Logiciel">Génie Logiciel</option>
+                      <option value="Reseaux">Réseaux</option>
+                      <option value="Securité">Sécurité</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      University
+                    </label>
+                    <input
+                      type="text"
+                      name="university"
+                      value={newMemoire.university}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, university: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={newMemoire.description}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      rows={3}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mention
+                    </label>
+                    <select
+                      name="mention"
+                      value={newMemoire.mention}
+                      onChange={(e) => setNewMemoire(prev => ({ ...prev, mention: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      required
+                    >
+                      <option value="">Sélectionnez une mention</option>
+                      <option value="Passable">Passable</option>
+                      <option value="Bien">Bien</option>
+                      <option value="Tres Bien">Tres Bien</option>
+                      <option value="Excellent">Excellent</option>
+                    </select>
+                  </div>
                 </div>
-              )}
-              
-              {similarityData?.status?.level === 'danger' && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
-                  <div className="flex items-start">
-                    <AlertCircle className="mt-0.5 mr-2 text-red-600" size={18} />
-                    <div>
-                      <p className="font-medium">Soumission bloquée</p>
-                      <p className="text-sm mt-1">
-                        Votre document présente un taux de similarité trop élevé ({similarityData.status.percentage.toFixed(1)}%) 
-                        qui dépasse le seuil autorisé ({similarityData.status.similarity_danger_threshold}%).
+
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PDF File
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl">
+                    <div className="space-y-1 text-center">
+                      <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                          <span>Upload a file</span>
+                          <input
+                            type="file"
+                            name="file"
+                            accept=".pdf"
+                            onChange={handleFileChange}
+                            className="sr-only"
+                            required
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PDF up to 10MB
+                        <br />
+                        <span className="text-blue-500">Your thesis will be automatically analyzed for similarity</span>
                       </p>
                     </div>
                   </div>
+                  {filePreview && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-500">Selected file: {newMemoire.file?.name}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetFormStates();
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    isSubmitting || 
-                    !isFileVerified || 
-                    !newMemoire.file || 
-                    similarityData?.status?.level === 'danger'
-                  }
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full inline-block"></span>
-                      Soumission...
-                    </>
-                  ) : 'Soumettre'}
-                </button>
-              </div>
-            </form>
+
+                <div className="flex justify-end space-x-4 mt-8">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="px-6 py-3 text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-6 py-3 text-white rounded-xl hover:shadow-lg transition-all duration-200 ${
+                      !isFileVerified 
+                        ? 'bg-yellow-500 hover:bg-yellow-600' 
+                        : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:scale-[1.02]'
+                    } disabled:opacity-50`}
+                    onClick={(e) => {
+                      if (!isFileVerified) {
+                        e.preventDefault();
+                        toast.warning('⚠️ Veuillez d\'abord vérifier votre document avec le vérificateur ci-dessus', {
+                          position: "top-center",
+                          autoClose: 5000,
+                          hideProgressBar: false,
+                          closeOnClick: true,
+                          pauseOnHover: true,
+                          draggable: true,
+                        });
+                        return;
+                      }
+                      if (similarityData?.status?.level === 'danger') {
+                        e.preventDefault();
+                        toast.error('❌ Le taux de similarité est trop élevé pour soumettre ce document');
+                        return;
+                      }
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting 
+                      ? 'Soumission en cours...' 
+                      : !isFileVerified 
+                        ? '⚠️ Vérifier le document' 
+                        : similarityData?.status?.level === 'danger'
+                          ? '❌ Similarité trop élevée'
+                          : 'Soumettre le mémoire'
+                    }
+                  </button>
+                </div>
+
+                {!isFileVerified && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-600">
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span>Please verify your document using the checker above before submitting</span>
+                    </div>
+                  </div>
+                )}
+                
+                {similarityData && similarityData.status.level === 'danger' && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span>High similarity detected - Please revise your thesis before submission</span>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
           </div>
         )}
         
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4">Mes mémoires</h2>
-          
-          {filteredMemoires.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="mx-auto mb-2 text-gray-400" size={40} />
-              <p>Aucun mémoire trouvé</p>
+        {showSimilarityReport && selectedMemoire && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Rapport de similarité: {selectedMemoire.libelle}
+                </h3>
+                <button
+                  onClick={() => setShowSimilarityReport(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <SimilarityReportModal
+                data={detailedData as DetailedSimilarityData}
+                onClose={() => setShowSimilarityReport(false)}
+              />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 rounded-tl-lg">Titre</th>
-                    <th className="px-4 py-3">Date de soumission</th>
-                    <th className="px-4 py-3">Spécialité</th>
-                    <th className="px-4 py-3">Université</th>
-                    <th className="px-4 py-3">Statut</th>
-                    <th className="px-4 py-3 rounded-tr-lg">Actions</th>
+          </div>
+        )}
+
+        <div className="backdrop-blur-lg bg-white/80 rounded-2xl shadow-xl border border-gray-100">
+          <div className="p-4 md:p-6 border-b border-gray-100">
+            <input
+              type="text"
+              placeholder="Search theses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Title</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Year</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Cycle</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Speciality</th>
+                  <th className="hidden lg:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">University</th>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+                  <th className="hidden md:table-cell px-6 py-4 text-left text-sm font-semibold text-gray-600">Mention</th>
+                  <th className="px-3 md:px-6 py-4 text-left text-sm font-semibold text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredMemoires.map((memoire) => (
+                  <tr key={memoire.id_memoire} className="hover:bg-gray-50/50">
+                    <td className="px-3 md:px-6 py-4">
+                      <div className="flex items-center">
+                        <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                        <span className="truncate max-w-[150px] md:max-w-none">
+                          {memoire.libelle}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="hidden md:table-cell px-6 py-4">{new Date(memoire.date_soumission).getFullYear()}</td>
+                    <td className="hidden md:table-cell px-6 py-4">{memoire.cycle}</td>
+                    <td className="hidden lg:table-cell px-6 py-4">{memoire.speciality}</td>
+                    <td className="hidden lg:table-cell px-6 py-4">{memoire.university}</td>
+                    <td className="px-3 md:px-6 py-4">
+                      <span className={`inline-flex items-center px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${getStatusColor(memoire.status)}`}>
+                        {getStatusIcon(memoire.status)}
+                        <span className="ml-1 md:ml-2 capitalize">{memoire.status}</span>
+                      </span>
+                    </td>
+                    <td className="hidden md:table-cell px-6 py-4">
+                      <span className="text-sm text-gray-600">
+                        {memoire.mention || 'Non noté'}
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-6 py-4">
+                      <div className="flex space-x-1 md:space-x-2">
+                        <a
+                          href={getApiUrl(`/${memoire.file_path}`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 md:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Download"
+                        >
+                          <Download size={18} />
+                        </a>
+                        <button
+                          onClick={() => handleViewSimilarityReport(memoire)}
+                          className="p-1 md:p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="View Similarity Report"
+                        >
+                          <AlertCircle size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMemoire(memoire.id_memoire)}
+                          className="p-1 md:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash size={18} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredMemoires.map((memoire) => (
-                    <tr key={memoire.id_memoire} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">{memoire.libelle}</td>
-                      <td className="px-4 py-3">{memoire.date_soumission}</td>
-                      <td className="px-4 py-3">{memoire.speciality}</td>
-                      <td className="px-4 py-3">{memoire.university}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          {getStatusIcon(memoire.status)}
-                          <span className="ml-1.5 text-sm">{getStatusText(memoire.status)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleViewSimilarityReport(memoire)}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                            title="Voir le rapport de similarité"
-                          >
-                            <AlertTriangle size={18} />
-                          </button>
-                          <a
-                            href={`${getApiUrl('/api/download/')}${memoire.file_path}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 text-gray-600 hover:bg-gray-50 rounded"
-                            title="Télécharger"
-                          >
-                            <Download size={18} />
-                          </a>
-                          {memoire.status === 'pending' && (
-                            <button
-                              onClick={() => handleDeleteMemoire(memoire.id_memoire)}
-                              className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              title="Supprimer"
-                            >
-                              <Trash size={18} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-      
-      {showSimilarityReport && detailedData && (
-        <SimilarityReportModal
-          data={detailedData}
-          onClose={() => setShowSimilarityReport(false)}
-        />
-      )}
     </div>
   );
 }
