@@ -139,15 +139,19 @@ const MemoirePage = () => {
       if (!data.success || !data.url) {
         throw new Error('URL de téléchargement non disponible');
       }
-  
-      // Télécharger le fichier à partir de l'URL signée
-      const pdfResponse = await fetch(data.url);
+
+      // Correction de l'URL S3
+      const correctedUrl = data.url.replace('ue-north-1', 'eu-north-1');
+      
+      // Télécharger le fichier à partir de l'URL signée corrigée
+      const pdfResponse = await fetch(correctedUrl);
       if (!pdfResponse.ok) {
         throw new Error('Erreur lors du téléchargement du PDF');
       }
-  
+
       const pdfBlob = await pdfResponse.blob();
-      const url = window.URL.createObjectURL(pdfBlob);
+      const pdfBlobWithType = new Blob([pdfBlob], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(pdfBlobWithType);
       const link = document.createElement('a');
       link.href = url;
       link.download = `${memoire.libelle}.pdf`;
@@ -155,8 +159,8 @@ const MemoirePage = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-  
-      alert("Document téléchargé avec succès");
+
+      alert('Document téléchargé avec succès');
     } catch (error) {
       console.error('Error downloading document:', error);
       alert('Erreur lors du téléchargement. Veuillez réessayer.');
@@ -269,8 +273,9 @@ const MemoirePage = () => {
   <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
     {pdfUrl ? (
       <Viewer
-        fileUrl={pdfUrl}
-        
+        fileUrl={pdfUrl
+          .replace('ue-north-1', 'eu-north-1')
+          .replace(/\\/g, '/')}
         defaultScale={1.2}
       />
     ) : (

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
+// import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
