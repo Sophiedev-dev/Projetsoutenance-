@@ -56,32 +56,49 @@ const MemoirePage = () => {
   const params = useParams();
   const [memoire, setMemoire] = useState<Memoire | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
 
   useEffect(() => {
-    // Dans votre composant principal
-const fetchMemoireDetails = async () => {
-  try {
-    const response = await fetch(getApiUrl(`/api/memoire/${params.id}`));
-    const data = await response.json();
-    
-    if (data.success) {
-      console.log('Memoire data:', data.memoire); // Debug log
-      setMemoire({
-        ...data.memoire,
-        validated_by_name: data.memoire.admin_name,
-        validation_date: data.memoire.validation_date
-      });
-      setLoading(false);
-    }
-  } catch (error) {
-    console.error('Erreur lors de la récupération des détails du mémoire:', error);
-    setLoading(false);
-  }
-};
-
+    const fetchMemoireDetails = async () => {
+      try {
+        const response = await fetch(getApiUrl(`/api/memoire/${params.id}`));
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        if (data.success) {
+          setMemoire({
+            ...data.memoire,
+            validated_by_name: data.memoire.admin_name,
+            validation_date: data.memoire.validation_date
+          });
+          
+          // Récupérer l'URL signée
+          const downloadResponse = await fetch(getApiUrl(`/api/memoire/${params.id}/download`));
+          if (!downloadResponse.ok) {
+            throw new Error(`HTTP error! status: ${downloadResponse.status}`);
+          }
+          
+          const downloadData = await downloadResponse.json();
+          if (downloadData.success && downloadData.url) {
+            setPdfUrl(downloadData.url);
+          } else {
+            throw new Error('URL de téléchargement non disponible');
+          }
+          
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des détails du mémoire:', error);
+        setLoading(false);
+        // Afficher un message d'erreur à l'utilisateur
+        alert('Erreur lors du chargement du document. Veuillez réessayer plus tard.');
+      }
+    };
+  
     fetchMemoireDetails();
   }, [params.id]);
-  
 
   
   if (loading) {
@@ -117,20 +134,32 @@ const fetchMemoireDetails = async () => {
         throw new Error(`Download failed: ${response.status}`);
       }
       
-      const data = await response.blob();
-      const url = window.URL.createObjectURL(data);
+      const data = await response.json();
+      
+      if (!data.success || !data.url) {
+        throw new Error('URL de téléchargement non disponible');
+      }
+  
+      // Télécharger le fichier à partir de l'URL signée
+      const pdfResponse = await fetch(data.url);
+      if (!pdfResponse.ok) {
+        throw new Error('Erreur lors du téléchargement du PDF');
+      }
+  
+      const pdfBlob = await pdfResponse.blob();
+      const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${memoire.libelle}_signed.pdf`;
+      link.download = `${memoire.libelle}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-
+  
       alert("Document téléchargé avec succès");
     } catch (error) {
       console.error('Error downloading document:', error);
-      // alert('Erreur lors du téléchargement. Veuillez réessayer.');
+      alert('Erreur lors du téléchargement. Veuillez réessayer.');
     }
   };
 
@@ -235,14 +264,22 @@ const fetchMemoireDetails = async () => {
       </div>
 
       {/* Visionneuse PDF */}
-      <div className="flex-1 bg-gray-900 h-[calc(100vh-13rem)]">
-        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
-          <Viewer
-            fileUrl={getApiUrl(`/${memoire.file_path.split('/').pop()}`)}
-            defaultScale={1.2}
-          />
-        </Worker>
+{/* Visionneuse PDF */}
+<div className="flex-1 bg-gray-900 h-[calc(100vh-13rem)]">
+  <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js">
+    {pdfUrl ? (
+      <Viewer
+        fileUrl={pdfUrl}
+        
+        defaultScale={1.2}
+      />
+    ) : (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-white">Chargement du PDF...</p>
       </div>
+    )}
+  </Worker>
+</div>
     </div>
   );
 };

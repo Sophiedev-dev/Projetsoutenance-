@@ -16,6 +16,7 @@ import { MentionStars } from './components/MentionStars';
 // import DocumentVerifier from './components/DocumentVerifier';
 import { getApiUrl } from './utils/config';
 
+
 // Définition des interfaces
 interface Memoire {
   id_memoire: string;
@@ -148,42 +149,87 @@ const Homepage: React.FC = () => {
     }
   };
 
-  const getPdfThumbnail = async (pdfUrl: string): Promise<string> => {
+
+const getPdfThumbnail = async (memoireId: string): Promise<string> => {
+  try {
+    // Récupérer l'URL signée pour le PDF
+    const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/download`));
+    if (!response.ok) {
+      throw new Error(`Failed to get signed URL: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!data.success || !data.url) {
+      throw new Error("Invalid response from server");
+    }
+
+    // Configurer le worker PDF.js avec le CDN approprié
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
+
+    // Charger le PDF avec les options appropriées
+    const loadingTask = pdfjsLib.getDocument({
+      url: data.url,
+      withCredentials: false,
+      cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
+      cMapPacked: true,
+    });
+
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error("Could not create canvas context");
+    }
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
     try {
-      const loadingTask = pdfjsLib.getDocument(pdfUrl);
-      const pdf = await loadingTask.promise;
-      const page = await pdf.getPage(1);
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
 
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
+      return canvas.toDataURL("image/jpeg", 0.5);
+    } catch (renderError) {
+      console.error("Error rendering PDF page:", renderError);
+      throw renderError;
+    }
+  } catch (error) {
+    console.error("Error generating thumbnail:", error);
+    return "";
+  }
+};
 
-      if (!context) {
-        throw new Error("Impossible de créer le contexte du canvas");
+// Modify the useEffect to handle errors better and prevent multiple simultaneous requests
+useEffect(() => {
+  const thumbnailCache = new Map<string, string>();
+  
+  const generateThumbnails = async () => {
+    for (const memoire of memoires) {
+      if (!thumbnailCache.has(memoire.id_memoire)) {
+        try {
+          const thumbnail = await getPdfThumbnail(memoire.id_memoire);
+          if (thumbnail) {
+            thumbnailCache.set(memoire.id_memoire, thumbnail);
+            setThumbnails(prev => ({ ...prev, [memoire.id_memoire]: thumbnail }));
+          }
+        } catch (error) {
+          console.error(`Error generating thumbnail for ${memoire.id_memoire}:`, error);
+        }
       }
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      await page.render({ canvasContext: context, viewport }).promise;
-
-      return canvas.toDataURL("image/png");
-    } catch (error) {
-      console.error("Erreur lors de la génération de la miniature :", error);
-      return ""; // Retourne une chaîne vide en cas d'erreur
     }
   };
 
-  useEffect(() => {
-    memoires.forEach(async (memoire) => {
-      try {
-        const thumbnail = await getPdfThumbnail(getApiUrl(`/${memoire.file_path}`));
-        setThumbnails((prev) => ({ ...prev, [memoire.id_memoire]: thumbnail }));
-      } catch (error) {
-        console.error(`Erreur pour la miniature de ${memoire.id_memoire}:`, error);
-      }
-    });
-  }, [memoires]);
+  generateThumbnails();
+}, [memoires]);
+
+
 
   const scrollToSection = (id: string): void => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
