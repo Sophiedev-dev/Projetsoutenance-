@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X } from 'lucide-react';
+import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 // import * as pdfjsLib from "pdfjs-dist/build/pdf";
@@ -81,19 +81,16 @@ const Homepage: React.FC = () => {
 
   const fetchMemoires = async (
     status = "validated", 
-    cycle = "", 
-    search = "", 
+    search = searchTerm, 
     sortBy = "libelle", 
     sortOrder = "asc"
   ): Promise<void> => {
     try {
       const url = new URL(getApiUrl('/api/memoire/memoire'));
       
-      // Add query parameters
       const params = new URLSearchParams();
       if (status) params.append('status', status);
-      if (cycle) params.append('cycle', cycle);
-      if (search) params.append('search', search.toLowerCase());
+      if (search) params.append('search', search);  
       if (sortBy) params.append('sortBy', sortBy);
       if (sortOrder) params.append('sortOrder', sortOrder);
       
@@ -106,7 +103,6 @@ const Homepage: React.FC = () => {
   
       const data = await response.json();
   
-      // Map the data to include signature information
       if (data && Array.isArray(data.memoire)) {
         const memoiresWithSignatures = data.memoire.map((memoire: Memoire) => ({
           ...memoire,
@@ -121,11 +117,11 @@ const Homepage: React.FC = () => {
 
   useEffect(() => {
     if (searchTerm) {
-      fetchMemoires('validated', '', searchTerm);
+      fetchMemoires('validated', searchTerm);  
     } else {
       fetchMemoires('validated');
     }
-  }, [searchTerm]);
+  }, [searchTerm, fetchMemoires]);
 
   const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const value = e.target.value;
@@ -505,7 +501,7 @@ useEffect(() => {
               },
               {
                 icon: ShieldCheck,
-                title: "Vérification Anti-Plagiat",
+                title: "Vérification",
                 description: "Vérifiez l'originalité de vos documents grâce à notre technologie avancée.",
                 color: "from-emerald-500 to-teal-400"
               },
@@ -591,94 +587,100 @@ useEffect(() => {
         </div>
       </div>
 
-      <div id="bibliotheque" className="max-w-7xl mx-auto px-4 py-16">
-        <div className="mb-12">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Bibliothèque Numérique
-          </h2>
-          <p className="text-gray-600 text-lg mb-8">
-            Explorez notre collection de travaux académiques de qualité
-          </p>
-
-          {/* Enhanced Filter Section */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-12 border border-gray-100">
-            <div className="flex flex-col space-y-6">
-              {/* Cycles filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-                  <GraduationCap className="w-5 h-5 mr-2 text-indigo-600" />
-                  Filtrer par cycle
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {["Bachelor", "Master", "Doctorat"].map((cycle) => (
-                    <button
-                      key={cycle}
-                      onClick={() => {
-                        setSelectedCycle(selectedCycle === cycle ? '' : cycle);
-                        fetchMemoires('validated', selectedCycle === cycle ? '' : cycle, searchTerm);
-                      }}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                        selectedCycle === cycle
-                          ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
-                      }`}
+      {/* Section Bibliothèque avec filtres améliorés */}
+      <div id="bibliotheque" className="py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="mb-12">
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-8">
+              Bibliothèque des Mémoires
+            </h2>
+            
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-1 gap-4">
+                  <div className="relative flex-1">
+                    <select
+                      value={selectedCycle}
+                      onChange={(e) => setSelectedCycle(e.target.value)}
+                      className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
                     >
-                      {cycle}
-                    </button>
-                  ))}
+                      <option value="">Tous les cycles</option>
+                      {['Bachelor', 'Master', 'PhD'].map(cycle => (
+                        <option key={cycle} value={cycle}>{cycle}</option>
+                      ))}
+                    </select>
+                    <GraduationCap className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
+
+                  <div className="relative flex-1">
+                    <select
+                      value={selectedSpeciality}
+                      onChange={(e) => setSelectedSpeciality(e.target.value)}
+                      className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
+                    >
+                      <option value="">Toutes les spécialités</option>
+                      {[...new Set(memoires.map(m => m.speciality))].filter(Boolean).map(spec => (
+                        <option key={spec} value={spec}>{spec}</option>
+                      ))}
+                    </select>
+                    <BookOpen className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
-              {/* Specialities filter */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center">
-                  <BookOpen className="w-5 h-5 mr-2 text-indigo-600" />
-                  Filtrer par spécialité
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {["Informatique", "Marketing", "Finance", "Droit", "Médecine"].map((spec) => (
+              {/* Filtres actifs */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {selectedCycle && (
+                  <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-sm">
+                    <GraduationCap className="w-4 h-4 mr-2" />
+                    {selectedCycle}
                     <button
-                      key={spec}
-                      onClick={() => setSelectedSpeciality(selectedSpeciality === spec ? '' : spec)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                        selectedSpeciality === spec
-                          ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
-                      }`}
+                      onClick={() => setSelectedCycle('')}
+                      className="ml-2 hover:text-indigo-800"
                     >
-                      {spec}
+                      <X className="h-4 w-4" />
                     </button>
-                  ))}
-                </div>
+                  </div>
+                )}
+                {selectedSpeciality && (
+                  <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-purple-50 text-purple-600 text-sm">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    {selectedSpeciality}
+                    <button
+                      onClick={() => setSelectedSpeciality('')}
+                      className="ml-2 hover:text-purple-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Group by Cycle then by Speciality */}
-          {["Bachelor", "Master", "Doctorat"].map((cycle) => {
-            // Filter memoires by current cycle
-            const cycleMemoires = memoires.filter(
-              (memoire) => !selectedCycle || memoire.cycle === cycle
-            );
+          {['Bachelor', 'Master', 'PhD'].map((cycle) => {
+            if (selectedCycle && selectedCycle !== cycle) return null;
 
-            // Skip if no memoires in this cycle or if a different cycle is selected
-            if (cycleMemoires.length === 0 || (selectedCycle && selectedCycle !== cycle)) {
-              return null;
-            }
+            const cycleMemoires = memoires.filter(memoire => {
+              const matchesCycle = selectedCycle ? memoire.cycle === cycle : true;
+              const matchesSpeciality = selectedSpeciality ? memoire.speciality === selectedSpeciality : true;
+              return matchesCycle && matchesSpeciality;
+            });
 
-            // Get all unique specialities in this cycle
-            const specialities = Array.from(
-              new Set(cycleMemoires.map((memoire) => memoire.speciality || "Non spécifié"))
-            );
+            if (cycleMemoires.length === 0) return null;
+
+            const specialities = [...new Set(cycleMemoires.map(memoire => memoire.speciality))];
 
             return (
               <div key={cycle} className="mb-16">
-                <h3 className="text-2xl font-bold text-gray-800 mb-8 flex items-center">
-                  <GraduationCap className="w-6 h-6 mr-2 text-indigo-600" />
-                  {cycle}
-                </h3>
+                <div className="flex items-center space-x-4 mb-8">
+                  <h3 className="text-2xl font-semibold text-gray-800">{cycle}</h3>
+                  <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
+                </div>
 
-                {specialities.map((speciality) => (
+                {specialities.map(speciality => (
                   <div key={speciality} className="mb-10">
                     <div className="mb-6 border-l-4 border-purple-500 pl-4">
                       <h4 className="text-xl font-medium text-gray-700 mb-6 pl-4 border-l-4 border-purple-500">

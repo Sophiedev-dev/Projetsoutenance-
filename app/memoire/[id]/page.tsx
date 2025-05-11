@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
 import {
   ChevronLeft,
@@ -33,6 +34,10 @@ interface Memoire {
   validation_date?: string;
   file_path: string;
   validated_by_name?: string;
+  signature: {
+    public_key: string;
+    signature: string;
+  };
 }
 
 const getMentionLabel = (mention: number | undefined): "Passable" | "Bien" | "Tres Bien" | "Excellent" | null => {
@@ -125,47 +130,133 @@ const MemoirePage = () => {
     );
   }
 
-  const handleDownloadWithVerification = async () => {
-    try {
-      console.log('Downloading memoire:', memoire.id_memoire);
-      const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
-      
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success || !data.url) {
-        throw new Error('URL de téléchargement non disponible');
-      }
 
-      // Correction de l'URL S3
-      const correctedUrl = data.url.replace('ue-north-1', 'eu-north-1');
-      
-      // Télécharger le fichier à partir de l'URL signée corrigée
-      const pdfResponse = await fetch(correctedUrl);
-      if (!pdfResponse.ok) {
-        throw new Error('Erreur lors du téléchargement du PDF');
-      }
 
-      const pdfBlob = await pdfResponse.blob();
-      const pdfBlobWithType = new Blob([pdfBlob], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(pdfBlobWithType);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${memoire.libelle}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      alert('Document téléchargé avec succès');
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      alert('Erreur lors du téléchargement. Veuillez réessayer.');
+const handleDownloadWithVerification = async () => {
+  try {
+    console.log('Downloading memoire:', memoire.id_memoire);
+    const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.url) {
+      throw new Error('URL de téléchargement non disponible');
+    }
+
+    // Correction de l'URL S3
+    const correctedUrl = data.url.replace('ue-north-1', 'eu-north-1');
+    
+    // Télécharger le fichier à partir de l'URL signée corrigée
+    const pdfResponse = await fetch(correctedUrl);
+    if (!pdfResponse.ok) {
+      throw new Error('Erreur lors du téléchargement du PDF');
+    }
+
+    const pdfBytes = await pdfResponse.arrayBuffer();
+    
+    // Charger le PDF existant
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    
+    // Ajouter une nouvelle page pour les informations de signature
+    const page = pdfDoc.addPage();
+    const { height } = page.getSize();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+
+    // Créer le texte de signature
+    const signatureInfo = {
+      id_memoire: memoire.id_memoire,
+      titre: memoire.libelle,
+      validation: {
+        date: memoire.validation_date,
+        validateur: memoire.validated_by_name,
+        signature_electronique: {
+          algorithme: 'SHA-256',
+          empreinte: `${memoire.id_memoire}_${memoire.validation_date}`,
+          signature: memoire.signature?.signature || 'Non disponible',
+          cle_publique: memoire.signature?.public_key || `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA245vPQyjJxsFvEZTus8X
+fwAJL8/8CoKG+t1+EzpkRdp7SZwyShDDdb4KrRdL5a3eRO2ujjhXzognzDPpqo5L
+0C3YWdR9fuWyFTMBeQO+LByrV81jg4OO1BWgQZq+jqSoBP/TBGIFr3CWYoGmu9mt
+7GLfSLOUpP6XF7K0VelnVtBf2CJZpivIQIciT7Smh9uVdMIY8a4BugAoUv5dGuFC
+jMJV+MO0hAD4j+BuM9pA/JjvXnf6vkZP6F/Qk+UR8+OsI0nauF2qoO8wnPdLHnls
+URTk4M2yHrmrSGcd3WFqzcmTqbXGeXRXZe7DxHYxXhNH6Dddns64qN38YjAuWfjO
+0wIDAQAB
+-----END PUBLIC KEY-----`,
+          horodatage: new Date().toISOString()
+        }
+      }
+    };
+
+    // Écrire les informations sur la nouvelle page
+    const writeText = (text: string, y: number) => {
+      page.drawText(text, {
+        x: 50,
+        y: height - y,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+    };
+
+    // Titre
+    page.drawText('INFORMATIONS DE SIGNATURE ÉLECTRONIQUE', {
+      x: 50,
+      y: height - 50,
+      size: 16,
+      font,
+      color: rgb(0, 0, 0),
+    });
+
+    // Informations du document
+    writeText(`ID Document: ${signatureInfo.id_memoire}`, 100);
+    writeText(`Titre: ${signatureInfo.titre}`, 120);
+    writeText(`Date de validation: ${signatureInfo.validation.date ? 
+      new Date(signatureInfo.validation.date).toLocaleDateString('fr-FR') : 
+      'Non disponible'}`, 140);
+    writeText(`Validateur: ${signatureInfo.validation.validateur || 'Non disponible'}`, 160);
+
+    // Informations de signature électronique
+    writeText('INFORMATIONS DE SIGNATURE', 200);
+    writeText(`Algorithme: ${signatureInfo.validation.signature_electronique.algorithme}`, 220);
+    writeText(`Empreinte: ${signatureInfo.validation.signature_electronique.empreinte}`, 240);
+    writeText(`Signature: ${signatureInfo.validation.signature_electronique.signature}`, 260);
+
+    // Clé publique
+    writeText('CLÉ PUBLIQUE', 280);
+    const publicKeyLines = signatureInfo.validation.signature_electronique.cle_publique.split('\n');
+    publicKeyLines.forEach((line, index) => {
+      writeText(line, 300 + (index * 20));
+    });
+
+    writeText(`Horodatage: ${new Date(signatureInfo.validation.signature_electronique.horodatage).toLocaleString('fr-FR')}`, 500);
+
+    // Sauvegarder le PDF modifié
+    const modifiedPdfBytes = await pdfDoc.save();
+    
+    // Créer le Blob et télécharger
+    const modifiedPdfBlob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(modifiedPdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${memoire.libelle}_signé.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    alert('Document signé téléchargé avec succès');
+  } catch (error) {
+    console.error('Error downloading document:', error);
+    alert('Erreur lors du téléchargement. Veuillez réessayer.');
+  }
+};
+
+
 
   return (
     <div className="min-h-screen bg-gray-100">
