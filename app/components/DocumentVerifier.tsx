@@ -166,10 +166,10 @@ Ce rapport a été généré automatiquement par le système ARCHIVA.
               />
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-800">
-              Entrez la clé publique (optionnel)
+              Entrez la clé publique 
             </h3>
             <p className="text-gray-600 text-center text-sm mb-4">
-              Si le document ne contient pas la clé publique, vous pouvez la fournir ici
+              Vous devez fournir la clé publique du document pour authentification
             </p>
             
             <textarea

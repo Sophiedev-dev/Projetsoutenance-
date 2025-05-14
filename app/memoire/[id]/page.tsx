@@ -36,8 +36,8 @@ interface Memoire {
   validated_by_name?: string;
   signature: {
     public_key: string;
-    signature: string;
-  };
+    signature: string; 
+  }| null;
 }
 
 const getMentionLabel = (mention: number | undefined): "Passable" | "Bien" | "Tres Bien" | "Excellent" | null => {
@@ -73,10 +73,20 @@ const MemoirePage = () => {
         const data = await response.json();
         
         if (data.success) {
+          // Récupérer la signature numérique
+          const signatureResponse = await fetch(getApiUrl(`/api/memoire/${params.id}/signature`));
+          const signatureData = await signatureResponse.json();
+          
+          console.log('Signature data:', signatureData); // Pour le débogage
+          
           setMemoire({
             ...data.memoire,
             validated_by_name: data.memoire.admin_name,
-            validation_date: data.memoire.validation_date
+            validation_date: data.memoire.validation_date,
+            signature: signatureData.success && signatureData.signature ? {
+              signature: signatureData.signature,
+              public_key: signatureData.public_key
+            } : null
           });
           
           // Récupérer l'URL signée
@@ -177,16 +187,8 @@ const handleDownloadWithVerification = async () => {
         signature_electronique: {
           algorithme: 'SHA-256',
           empreinte: `${memoire.id_memoire}_${memoire.validation_date}`,
-          signature: memoire.signature?.signature || 'Non disponible',
-          cle_publique: memoire.signature?.public_key || `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA245vPQyjJxsFvEZTus8X
-fwAJL8/8CoKG+t1+EzpkRdp7SZwyShDDdb4KrRdL5a3eRO2ujjhXzognzDPpqo5L
-0C3YWdR9fuWyFTMBeQO+LByrV81jg4OO1BWgQZq+jqSoBP/TBGIFr3CWYoGmu9mt
-7GLfSLOUpP6XF7K0VelnVtBf2CJZpivIQIciT7Smh9uVdMIY8a4BugAoUv5dGuFC
-jMJV+MO0hAD4j+BuM9pA/JjvXnf6vkZP6F/Qk+UR8+OsI0nauF2qoO8wnPdLHnls
-URTk4M2yHrmrSGcd3WFqzcmTqbXGeXRXZe7DxHYxXhNH6Dddns64qN38YjAuWfjO
-0wIDAQAB
------END PUBLIC KEY-----`,
+          signature: memoire.signature?.signature || 'Signature non disponible',
+          cle_publique: memoire.signature?.public_key || 'Clé publique non disponible',
           horodatage: new Date().toISOString()
         }
       }

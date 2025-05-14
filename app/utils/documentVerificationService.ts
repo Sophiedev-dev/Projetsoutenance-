@@ -48,27 +48,34 @@ export const isDocumentSigned = async (file: File): Promise<boolean> => {
   try {
     const lastPageText = await extractLastPageText(file);
     
-    // Check for all required signature elements
-    const hasSignature = lastPageText.includes('Digital Signature:') || 
-                        lastPageText.includes('Signature numérique:') ||
-                        lastPageText.includes('SIGNATURE:');
-                        
-    const hasPublicKey = lastPageText.includes('-----BEGIN PUBLIC KEY-----') && 
-                        lastPageText.includes('-----END PUBLIC KEY-----');
-                        
-    const hasValidation = lastPageText.includes('Validé par:') ||
-                         lastPageText.includes('Validated by:');
+    // Amélioration des regex pour une meilleure détection
+    const signatureRegex = /Signature:\s*([A-Za-z0-9+/=]+(?:\s+[A-Za-z0-9+/=]+)*)/;
+    const publicKeyRegex = /-----BEGIN PUBLIC KEY-----([\s\S]*?)-----END PUBLIC KEY-----/;
+    const validationRegex = /Date de validation:\s*(\d{2}\/\d{2}\/\d{4})/;
 
-    console.log('Signature check:', {
-      hasSignature,
-      hasPublicKey,
-      hasValidation,
-      textSample: lastPageText.slice(0, 200) // Log first 200 chars for debugging
+    const hasSignature = signatureRegex.test(lastPageText);
+    const hasPublicKey = publicKeyRegex.test(lastPageText);
+    const hasValidation = validationRegex.test(lastPageText);
+
+    // Ajout de logs plus détaillés pour le débogage
+    console.log('Contenu du texte:', lastPageText);
+    console.log('Vérification détaillée:', {
+      signature: {
+        présente: hasSignature,
+        valeur: lastPageText.match(signatureRegex)?.[1] || 'Non trouvée'
+      },
+      validation: {
+        présente: hasValidation,
+        date: lastPageText.match(validationRegex)?.[1] || 'Non trouvée'
+      },
+      cléPublique: {
+        présente: hasPublicKey
+      }
     });
 
     return hasSignature && hasPublicKey && hasValidation;
   } catch (error) {
-    console.error('Error checking signature:', error);
+    console.error('Erreur lors de la vérification de la signature:', error);
     return false;
   }
 };
@@ -76,50 +83,31 @@ export const isDocumentSigned = async (file: File): Promise<boolean> => {
 export const extractSignatureInfo = async (file: File): Promise<{ signature: string; publicKey: string; } | null> => {
   try {
     const lastPageText = await extractLastPageText(file);
-    const lines = lastPageText.split('\n');
     
-    let signature = '';
-    let publicKey = '';
-    let isCollectingPublicKey = false;
-    let nextLineIsSignature = false;
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      
-      // Handle signature
-      if (nextLineIsSignature && trimmedLine.length > 0) {
-        signature = trimmedLine;
-        nextLineIsSignature = false;
-      }
-      if (trimmedLine === 'Digital Signature:' || trimmedLine === 'Signature numérique:' || trimmedLine === 'SIGNATURE:') {
-        nextLineIsSignature = true;
-      }
-      
-      // Handle public key
-      if (trimmedLine === '-----BEGIN PUBLIC KEY-----') {
-        isCollectingPublicKey = true;
-        publicKey = trimmedLine + '\n';
-      } else if (isCollectingPublicKey) {
-        publicKey += trimmedLine + '\n';
-        if (trimmedLine === '-----END PUBLIC KEY-----') {
-          isCollectingPublicKey = false;
-        }
-      }
-    }
+    // Amélioration de l'extraction de la signature avec gestion multilignes
+    const signatureRegex = /Signature:\s*([A-Za-z0-9+/=]+(?:\s+[A-Za-z0-9+/=]+)*)/;
+    const signatureMatch = lastPageText.match(signatureRegex);
+    const signature = signatureMatch ? signatureMatch[1].replace(/\s+/g, '') : '';
 
-    console.log('Extracted signature:', signature);
-    console.log('Extracted public key:', publicKey);
+    // Extraction de la clé publique (inchangée car fonctionne bien)
+    const publicKeyMatch = lastPageText.match(/-----BEGIN PUBLIC KEY-----([\s\S]*?)-----END PUBLIC KEY-----/);
+    const publicKey = publicKeyMatch ? publicKeyMatch[0].trim() : '';
 
     if (!signature || !publicKey) {
+      console.log('Détails de l\'extraction:', {
+        signatureTrouvée: !!signature,
+        longueurSignature: signature.length,
+        cléPubliqueTrouvée: !!publicKey
+      });
       return null;
     }
 
     return {
-      signature: signature.trim(),
-      publicKey: publicKey.trim()
+      signature,
+      publicKey
     };
   } catch (error) {
-    console.error('Error extracting signature info:', error);
+    console.error('Erreur lors de l\'extraction des informations de signature:', error);
     return null;
   }
 };

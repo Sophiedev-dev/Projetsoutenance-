@@ -125,8 +125,6 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
     setError(null);
 
     try {
-      // Calculer le hash du fichier
-      const hash = await calculateFileHash(file);
       const formData = new FormData();
       formData.append("file", file);
       
@@ -149,17 +147,21 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         throw new Error(data.message || "Échec de la vérification");
       }
 
+      // Trouver la similarité la plus élevée parmi les résultats
+      const maxSimilarity = Array.isArray(data.results) 
+        ? Math.max(...data.results.map((r: ApiResponseData) => r.similarity), 0)
+        : 0;
+
       // Déterminer le niveau de similarité en fonction des seuils
       let level: "success" | "warning" | "danger" = "success";
       let message = "Similarité acceptable, vous pouvez soumettre votre document";
       let color = "green";
-      const percentage = data.percentage || 0;
 
-      if (percentage >= thresholds.dangerThreshold) {
+      if (maxSimilarity >= thresholds.dangerThreshold) {
         level = "danger";
         message = "Similarité élevée détectée! Soumission bloquée.";
         color = "red";
-      } else if (percentage >= thresholds.warningThreshold) {
+      } else if (maxSimilarity >= thresholds.warningThreshold) {
         level = "warning";
         message = "Niveau de similarité modéré détecté. Vérification recommandée.";
         color = "orange";
@@ -171,7 +173,7 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
           level: level,
           message: message,
           color: color,
-          percentage: percentage,
+          percentage: maxSimilarity, // Utiliser la similarité maximale trouvée
           similarity_warning_threshold: thresholds.warningThreshold,
           similarity_danger_threshold: thresholds.dangerThreshold,
         },
@@ -191,7 +193,7 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
       }
 
       // Si le seuil de danger est dépassé, réinitialiser le fichier
-      if (level === "danger") {
+      if (maxSimilarity >= thresholds.dangerThreshold) {
         setFile(null);
         const input = document.querySelector(
           "input[type='file']"
@@ -199,7 +201,8 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         if (input) input.value = "";
       }
 
-      if (onFileVerified && level !== "danger") {
+      if (onFileVerified && maxSimilarity < thresholds.dangerThreshold) {
+        const hash = await calculateFileHash(file);
         onFileVerified(hash);
       }
     } catch (err) {

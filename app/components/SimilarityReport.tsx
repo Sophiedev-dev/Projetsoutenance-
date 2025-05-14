@@ -102,7 +102,7 @@ const SimilarityReport: React.FC<SimilarityReportProps> = ({
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
             className={`h-2.5 rounded-full ${getProgressBarColor()}`}
-            style={{ width: `${status.percentage}%` }}
+            style={{ width: `${Math.min(status.percentage, 100)}%` }}
           ></div>
         </div>
         <p className={`mt-2 text-sm ${getStatusTextColor()}`}>
