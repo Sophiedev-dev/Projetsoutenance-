@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, CheckCircle2, ShieldCheck, UserCheck, BookOpen, GraduationCap, Award, Menu, X, ChevronDown, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { Worker, Viewer } from "@react-pdf-viewer/core";
-// import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
@@ -13,9 +12,7 @@ import { fr } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { MentionStars } from './components/MentionStars';
-// import DocumentVerifier from './components/DocumentVerifier';
 import { getApiUrl } from './utils/config';
-
 
 // Définition des interfaces
 interface Memoire {
@@ -42,6 +39,25 @@ interface Thumbnails {
   [key: string]: string;
 }
 
+// Définition des cycles avec leurs spécialités respectives
+const CYCLE_SPECIALITIES: Record<string, string[]> = {
+  'Bachelor': [
+    'Sécurité',
+    'Réseaux',
+    'Génie Logiciel'
+  ],
+  'Master': [
+    'Sécurité',
+    'Réseaux',
+    'Génie Logiciel'
+  ],
+  'PhD': [
+    'Sécurité',
+    'Réseaux',
+    'Génie Logiciel'
+  ]
+};
+
 const Homepage: React.FC = () => {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -52,17 +68,15 @@ const Homepage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedCycle, setSelectedCycle] = useState<string>('');
   const [selectedSpeciality, setSelectedSpeciality] = useState<string>('');
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [isLoadingDocument, setIsLoadingDocument] = useState<boolean>(false);
   const [stats, setStats] = useState<Stats>({
     memoires: 0,
     chercheurs: 0,
     specialites: 0,
   });
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async (): Promise<void> => {
+  const fetchStats = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch(getApiUrl('/api/stats'));
       if (!response.ok) {
@@ -77,9 +91,9 @@ const Homepage: React.FC = () => {
     } catch (error) {
       console.error("Erreur lors de la récupération des statistiques :", error instanceof Error ? error.message : String(error));
     }
-  };
+  }, []);
 
-  const fetchMemoires = async (
+  const fetchMemoires = useCallback(async (
     status = "validated", 
     search = searchTerm, 
     sortBy = "libelle", 
@@ -93,6 +107,8 @@ const Homepage: React.FC = () => {
       if (search) params.append('search', search);  
       if (sortBy) params.append('sortBy', sortBy);
       if (sortOrder) params.append('sortOrder', sortOrder);
+      if (selectedCycle) params.append('cycle', selectedCycle);
+      if (selectedSpeciality) params.append('speciality', selectedSpeciality);
       
       url.search = params.toString();
   
@@ -104,24 +120,89 @@ const Homepage: React.FC = () => {
       const data = await response.json();
   
       if (data && Array.isArray(data.memoire)) {
-        const memoiresWithSignatures = data.memoire.map((memoire: Memoire) => ({
+        // Génération de mémoires simulés avec classification par cycle
+        const simulatedMemoires: Memoire[] = [];
+        
+        Object.entries(CYCLE_SPECIALITIES).forEach(([cycle, specialities]) => {
+          specialities.forEach((speciality) => {
+            // Générer 2-3 mémoires par spécialité
+            const numberOfMemoires = Math.floor(Math.random() * 2) + 2;
+            for (let i = 0; i < numberOfMemoires; i++) {
+              const memoireId = `${cycle.toLowerCase()}_${speciality.toLowerCase().replace(/\s+/g, '_')}_${i + 1}`;
+              const titles = [
+                `Analyse approfondie de ${speciality}`,
+                `Étude comparative en ${speciality}`,
+                `Innovation et développement en ${speciality}`,
+                `Recherche avancée sur ${speciality}`,
+                `Méthodologie moderne en ${speciality}`
+              ];
+              
+              const mentions = ['Passable', 'Bien', 'Tres Bien', 'Excellent'];
+              const authors = ['Jean Dupont', 'Marie Martin', 'Pierre Durand', 'Sophie Lefebvre', 'Antoine Bernard'];
+              
+              simulatedMemoires.push({
+                id_memoire: memoireId,
+                libelle: titles[Math.floor(Math.random() * titles.length)],
+                file_path: `/uploads/memoires/${memoireId}.pdf`,
+                signature: 'signature_hash',
+                hasSignature: true,
+                date_soumission: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString(),
+                cycle: cycle,
+                speciality: speciality,
+                university: 'Université de Paris',
+                mention: mentions[Math.floor(Math.random() * mentions.length)],
+                etudiant_nom: authors[Math.floor(Math.random() * authors.length)]
+              });
+            }
+          });
+        });
+
+        // Combiner les mémoires réels avec les simulés
+        const realMemoires = data.memoire.map((memoire: Memoire) => ({
           ...memoire,
           hasSignature: Boolean(memoire.signature)
         }));
-        setMemoires(memoiresWithSignatures);
+
+        const allMemoires = [...realMemoires];
+
+        // Filtrer selon les critères sélectionnés
+        let filteredMemoires = allMemoires;
+
+        if (selectedCycle) {
+          filteredMemoires = filteredMemoires.filter(m => m.cycle === selectedCycle);
+        }
+
+        if (selectedSpeciality) {
+          filteredMemoires = filteredMemoires.filter(m => m.speciality === selectedSpeciality);
+        }
+
+        if (search) {
+          const searchLower = search.toLowerCase();
+          filteredMemoires = filteredMemoires.filter(m => 
+            m.libelle.toLowerCase().includes(searchLower) ||
+            (m.speciality && m.speciality.toLowerCase().includes(searchLower)) ||
+            (m.etudiant_nom && m.etudiant_nom.toLowerCase().includes(searchLower))
+          );
+        }
+
+        setMemoires(filteredMemoires);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des mémoires :", error instanceof Error ? error.message : String(error));
     }
-  };
+  }, [searchTerm, selectedCycle, selectedSpeciality]);
 
   useEffect(() => {
-    if (searchTerm) {
+    fetchStats();
+  }, [fetchStats]);
+
+  useEffect(() => {
+    if (searchTerm || selectedCycle || selectedSpeciality) {
       fetchMemoires('validated', searchTerm);  
     } else {
       fetchMemoires('validated');
     }
-  }, [searchTerm, fetchMemoires]);
+  }, [searchTerm, selectedCycle, selectedSpeciality, fetchMemoires]);
 
   const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const value = e.target.value;
@@ -145,87 +226,122 @@ const Homepage: React.FC = () => {
     }
   };
 
-
-const getPdfThumbnail = async (memoireId: string): Promise<string> => {
-  try {
-    // Récupérer l'URL signée pour le PDF
-    const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/download`));
-    if (!response.ok) {
-      throw new Error(`Failed to get signed URL: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    if (!data.success || !data.url) {
-      throw new Error("Invalid response from server");
-    }
-
-    // Configurer le worker PDF.js avec le CDN approprié
-    const pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
-
-    // Charger le PDF avec les options appropriées
-    const loadingTask = pdfjsLib.getDocument({
-      url: data.url,
-      withCredentials: false,
-      cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
-      cMapPacked: true,
-    });
-
-    const pdf = await loadingTask.promise;
-    const page = await pdf.getPage(1);
-
-    const viewport = page.getViewport({ scale: 0.5 });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      throw new Error("Could not create canvas context");
-    }
-
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
+  // Fonction pour gérer la navigation avec loader
+  const handleNavigateToAdmin = async (): Promise<void> => {
+    setIsNavigating(true);
     try {
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
-
-      return canvas.toDataURL("image/jpeg", 0.5);
-    } catch (renderError) {
-      console.error("Error rendering PDF page:", renderError);
-      throw renderError;
-    }
-  } catch (error) {
-    console.error("Error generating thumbnail:", error);
-    return "";
-  }
-};
-
-// Modify the useEffect to handle errors better and prevent multiple simultaneous requests
-useEffect(() => {
-  const thumbnailCache = new Map<string, string>();
-  
-  const generateThumbnails = async () => {
-    for (const memoire of memoires) {
-      if (!thumbnailCache.has(memoire.id_memoire)) {
-        try {
-          const thumbnail = await getPdfThumbnail(memoire.id_memoire);
-          if (thumbnail) {
-            thumbnailCache.set(memoire.id_memoire, thumbnail);
-            setThumbnails(prev => ({ ...prev, [memoire.id_memoire]: thumbnail }));
-          }
-        } catch (error) {
-          console.error(`Error generating thumbnail for ${memoire.id_memoire}:`, error);
-        }
-      }
+      // Délai minimal pour montrer le loader
+      await new Promise(resolve => setTimeout(resolve, 300));
+      router.push('/Sign');
+    } catch (error) {
+      console.error('Erreur de navigation:', error);
+    } finally {
+      setIsNavigating(false);
     }
   };
 
-  generateThumbnails();
-}, [memoires]);
+  // Fonction pour gérer l'ouverture de document avec loader
+  const handleDocumentClick = async (memoire: Memoire): Promise<void> => {
+    setIsLoadingDocument(true);
+    try {
+      // Délai minimal pour montrer le loader
+      await new Promise(resolve => setTimeout(resolve, 200));
+      router.push(`/memoire/${memoire.id_memoire}`);
+    } catch (error) {
+      console.error('Erreur lors de l\'ouverture du document:', error);
+    } finally {
+      setIsLoadingDocument(false);
+    }
+  };
 
+  const getPdfThumbnail = async (memoireId: string): Promise<string> => {
+    try {
+      const response = await fetch(getApiUrl(`/api/memoire/${memoireId}/download`));
+      if (!response.ok) {
+        throw new Error(`Failed to get signed URL: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (!data.success || !data.url) {
+        throw new Error("Invalid response from server");
+      }
 
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
+
+      const loadingTask = pdfjsLib.getDocument({
+        url: data.url,
+        withCredentials: false,
+        cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
+        cMapPacked: true,
+      });
+
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+
+      const viewport = page.getViewport({ scale: 0.3 }); // Réduit l'échelle pour accélérer
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Could not create canvas context");
+      }
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      try {
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+
+        return canvas.toDataURL("image/jpeg", 0.3); // Réduit la qualité pour accélérer
+      } catch (renderError) {
+        console.error("Error rendering PDF page:", renderError);
+        throw renderError;
+      }
+    } catch (error) {
+      console.error("Error generating thumbnail:", error);
+      return "";
+    }
+  };
+
+  // Amélioration de la génération des thumbnails avec batch processing
+  useEffect(() => {
+    const thumbnailCache = new Map<string, string>();
+    
+    const generateThumbnails = async (): Promise<void> => {
+      // Traitement par batch de 3 pour éviter la surcharge
+      const batchSize = 3;
+      for (let i = 0; i < memoires.length; i += batchSize) {
+        const batch = memoires.slice(i, i + batchSize);
+        
+        await Promise.all(
+          batch.map(async (memoire) => {
+            if (!thumbnailCache.has(memoire.id_memoire)) {
+              try {
+                const thumbnail = await getPdfThumbnail(memoire.id_memoire);
+                if (thumbnail) {
+                  thumbnailCache.set(memoire.id_memoire, thumbnail);
+                  setThumbnails(prev => ({ ...prev, [memoire.id_memoire]: thumbnail }));
+                }
+              } catch (error) {
+                console.error(`Error generating thumbnail for ${memoire.id_memoire}:`, error);
+              }
+            }
+          })
+        );
+        
+        // Délai entre les batches pour éviter la surcharge
+        if (i + batchSize < memoires.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    };
+
+    generateThumbnails();
+  }, [memoires]);
 
   const scrollToSection = (id: string): void => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -234,8 +350,32 @@ useEffect(() => {
     }
   };
 
+  // Loader pour la navigation vers admin
+  const NavigationLoader = ()=> (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mb-3" />
+        <p className="text-gray-700">Redirection en cours...</p>
+      </div>
+    </div>
+  );
+
+  // Loader pour l'ouverture de document
+  const DocumentLoader = ()=> (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 flex flex-col items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+        <p className="text-gray-700">Ouverture du document...</p>
+      </div>
+    </div>
+  );
+
   return (
     <div id="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Loaders */}
+      {isNavigating && <NavigationLoader />}
+      {isLoadingDocument && <DocumentLoader />}
+
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -244,7 +384,6 @@ useEffect(() => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="py-3">
             <div className="flex items-center justify-between">
-              {/* Logo */}
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="text-2xl font-bold text-indigo-600"
@@ -252,7 +391,6 @@ useEffect(() => {
                 ARCHIVA
               </motion.div>
 
-              {/* Desktop Search Bar */}
               <div className="hidden md:flex flex-1 mx-8">
                 <div className="relative w-full max-w-2xl">
                   <input
@@ -264,7 +402,6 @@ useEffect(() => {
                   />
                   <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                   
-                  {/* Suggestions dropdown */}
                   {suggestions.length > 0 && (
                     <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50">
                       {suggestions.map((suggestion, index) => (
@@ -284,7 +421,6 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-gray-100 md:hidden"
@@ -296,7 +432,6 @@ useEffect(() => {
                 )}
               </button>
 
-              {/* Desktop Navigation */}
               <nav className="hidden md:flex items-center space-x-4">
                 {[
                   { name: "Mémoires", icon: BookOpen, id: "bibliotheque" },
@@ -319,18 +454,22 @@ useEffect(() => {
                   <ShieldCheck className="h-5 w-5" />
                   <span>Vérification</span>
                 </motion.a>
-                <motion.a
+                <motion.button
                   whileHover={{ scale: 1.05 }}
-                  className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 flex items-center gap-2"
-                  href="./Sign"
+                  className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50"
+                  onClick={handleNavigateToAdmin}
+                  disabled={isNavigating}
                 >
-                  <UserCheck className="h-5 w-5" />
+                  {isNavigating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <UserCheck className="h-5 w-5" />
+                  )}
                   <span>Admin</span>
-                </motion.a>
+                </motion.button>
               </nav>
             </div>
 
-            {/* Mobile Search - Always visible on mobile */}
             <div className="mt-3 md:hidden">
               <div className="relative">
                 <input
@@ -345,7 +484,6 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Mobile Menu */}
           {isMobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -374,14 +512,21 @@ useEffect(() => {
                   <ShieldCheck className="h-5 w-5" />
                   <span>Vérification</span>
                 </a>
-                <a
-                  href="./Sign"
-                  className="w-full px-4 py-2 text-left bg-indigo-500 text-white rounded-lg flex items-center gap-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                <button
+                  className="w-full px-4 py-2 text-left bg-indigo-500 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleNavigateToAdmin();
+                  }}
+                  disabled={isNavigating}
                 >
-                  <UserCheck className="h-5 w-5" />
+                  {isNavigating ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <UserCheck className="h-5 w-5" />
+                  )}
                   <span>Admin</span>
-                </a>
+                </button>
               </div>
             </motion.div>
           )}
@@ -456,7 +601,6 @@ useEffect(() => {
         </div>
       </motion.div>
 
-      {/* Deuxième section */}
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
@@ -491,7 +635,6 @@ useEffect(() => {
             transition={{ delay: 0.4 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12"
           >
-            {/* Feature Cards */}
             {[
               {
                 icon: BookOpen,
@@ -528,14 +671,12 @@ useEffect(() => {
         </div>
       </motion.div>
 
-      {/* Ajoutez votre recherche - Section CTA */}
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         className="bg-gradient-to-r from-indigo-600 to-purple-600 py-16 relative overflow-hidden"
       >
-        {/* Cercles decoratifs */}
         <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-indigo-500 opacity-20" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-purple-500 opacity-20" />
 
@@ -555,10 +696,16 @@ useEffect(() => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 text-lg font-medium"
-              onClick={() => router.push('/Sign')}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 text-lg font-medium flex items-center gap-2 mx-auto disabled:opacity-50"
+              onClick={handleNavigateToAdmin}
+              disabled={isNavigating}
             >
-              Ajoutez votre recherche
+              {isNavigating ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <UserCheck className="w-6 h-6" />
+              )}
+              <span>Ajoutez votre recherche</span>
             </motion.button>
           </motion.div>
         </div>
@@ -587,7 +734,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Section Bibliothèque avec filtres améliorés */}
       <div id="bibliotheque" className="py-16">
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-12">
@@ -605,7 +751,7 @@ useEffect(() => {
                       className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
                     >
                       <option value="">Tous les cycles</option>
-                      {['Bachelor', 'Master', 'PhD'].map(cycle => (
+                      {Object.keys(CYCLE_SPECIALITIES).map(cycle => (
                         <option key={cycle} value={cycle}>{cycle}</option>
                       ))}
                     </select>
@@ -620,9 +766,14 @@ useEffect(() => {
                       className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
                     >
                       <option value="">Toutes les spécialités</option>
-                      {[...new Set(memoires.map(m => m.speciality))].filter(Boolean).map(spec => (
-                        <option key={spec} value={spec}>{spec}</option>
-                      ))}
+                      {selectedCycle ? 
+                        CYCLE_SPECIALITIES[selectedCycle]?.map(spec => (
+                          <option key={spec} value={spec}>{spec}</option>
+                        )) :
+                        Object.values(CYCLE_SPECIALITIES).flat().map(spec => (
+                          <option key={spec} value={spec}>{spec}</option>
+                        ))
+                      }
                     </select>
                     <BookOpen className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
                     <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -630,7 +781,6 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Filtres actifs */}
               <div className="flex flex-wrap gap-2 mt-4">
                 {selectedCycle && (
                   <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-sm">
@@ -660,18 +810,22 @@ useEffect(() => {
             </div>
           </div>
 
-          {['Bachelor', 'Master', 'PhD'].map((cycle) => {
+          {Object.keys(CYCLE_SPECIALITIES).map((cycle) => {
             if (selectedCycle && selectedCycle !== cycle) return null;
 
-            const cycleMemoires = memoires.filter(memoire => {
-              const matchesCycle = selectedCycle ? memoire.cycle === cycle : true;
-              const matchesSpeciality = selectedSpeciality ? memoire.speciality === selectedSpeciality : true;
-              return matchesCycle && matchesSpeciality;
-            });
+            const cycleMemoires = memoires.filter(memoire => memoire.cycle === cycle);
 
             if (cycleMemoires.length === 0) return null;
 
-            const specialities = [...new Set(cycleMemoires.map(memoire => memoire.speciality))];
+            // Grouper par spécialité pour ce cycle
+            const specialityGroups = cycleMemoires.reduce((acc, memoire) => {
+              const speciality = memoire.speciality || 'Non spécifié';
+              if (!acc[speciality]) {
+                acc[speciality] = [];
+              }
+              acc[speciality].push(memoire);
+              return acc;
+            }, {} as Record<string, Memoire[]>);
 
             return (
               <div key={cycle} className="mb-16">
@@ -680,7 +834,7 @@ useEffect(() => {
                   <div className="flex-grow h-px bg-gradient-to-r from-blue-200 to-purple-200"></div>
                 </div>
 
-                {specialities.map(speciality => (
+                {Object.entries(specialityGroups).map(([speciality, specialityMemoires]) => (
                   <div key={speciality} className="mb-10">
                     <div className="mb-6 border-l-4 border-purple-500 pl-4">
                       <h4 className="text-xl font-medium text-gray-700 mb-6 pl-4 border-l-4 border-purple-500">
@@ -688,73 +842,70 @@ useEffect(() => {
                       </h4>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                        {cycleMemoires
-                          .filter(memoire => memoire.speciality === speciality)
-                          .map((memoire) => (
-                            // Your existing memoire card component with all its functionality
-                            <div
-                              key={memoire.id_memoire}
-                              className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
-                              onClick={() => router.push(`/memoire/${memoire.id_memoire}`)}
-                            >
-                              <div className="relative w-full h-56 overflow-hidden bg-gray-50">
-                                {thumbnails[memoire.id_memoire] ? (
-                                  <div className="relative w-full h-full">
-                                    <Image
-                                      src={thumbnails[memoire.id_memoire]}
-                                      alt="PDF Cover"
-                                      width={300}
-                                      height={300}
-                                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        {specialityMemoires.map((memoire) => (
+                          <div
+                            key={memoire.id_memoire}
+                            className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer"
+                            onClick={() => handleDocumentClick(memoire)}
+                          >
+                            <div className="relative w-full h-56 overflow-hidden bg-gray-50">
+                              {thumbnails[memoire.id_memoire] ? (
+                                <div className="relative w-full h-full">
+                                  <Image
+                                    src={thumbnails[memoire.id_memoire]}
+                                    alt="PDF Cover"
+                                    width={300}
+                                    height={300}
+                                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                </div>
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <div className="animate-pulse flex flex-col items-center">
+                                    <Loader2 className="h-8 w-8 mb-2 text-blue-500 animate-spin" />
+                                    <span className="text-sm text-gray-400">Chargement...</span>
                                   </div>
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <div className="animate-pulse flex flex-col items-center">
-                                      <div className="h-8 w-8 mb-2 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
-                                      <span className="text-sm text-gray-400">Chargement...</span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="mb-3">
-                                {memoire.mention ? (
-                                <MentionStars mention={memoire.mention as "Passable" | "Bien" | "Tres Bien" | "Excellent" | null} size="sm" />
-                                ) : (
-                              <span className="text-sm text-gray-500">Non noté</span>
+                                </div>
                               )}
                             </div>
 
-                              <div className="p-5">
-                                <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
-                                  {memoire.libelle}
-                                </h4>
+                            <div className="p-5">
+                              <div className="mb-3">
+                                {memoire.mention ? (
+                                  <MentionStars mention={memoire.mention as "Passable" | "Bien" | "Tres Bien" | "Excellent" | null} size="sm" />
+                                ) : (
+                                  <span className="text-sm text-gray-500">Non noté</span>
+                                )}
+                              </div>
 
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                  <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
-                                    {memoire.speciality || "Non spécifié"}
-                                  </span>
-                                  {memoire.hasSignature && (
-                                    <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full flex items-center">
-                                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                                      Certifié
-                                    </span>
-                                  )}
-                                </div>
+                              <h4 className="text-lg font-medium text-gray-800 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
+                                {memoire.libelle}
+                              </h4>
 
-                                <div className="flex justify-between items-center">
-                                  <span className="text-xs text-gray-500">
-                                    {memoire.date_soumission && format(new Date(memoire.date_soumission), "dd MMM yyyy", { locale: fr })}
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                <span className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-medium rounded-full">
+                                  {memoire.speciality || "Non spécifié"}
+                                </span>
+                                {memoire.hasSignature && (
+                                  <span className="px-3 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full flex items-center">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Certifié
                                   </span>
-                                  <span className="text-xs font-medium text-gray-700">
-                                    {memoire.etudiant_nom || "Auteur inconnu"}
-                                  </span>
-                                </div>
+                                )}
+                              </div>
+
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500">
+                                  {memoire.date_soumission && format(new Date(memoire.date_soumission), "dd MMM yyyy", { locale: fr })}
+                                </span>
+                                <span className="text-xs font-medium text-gray-700">
+                                  {memoire.etudiant_nom || "Auteur inconnu"}
+                                </span>
                               </div>
                             </div>
-                          ))}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -765,7 +916,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Modal de prévisualisation */}
       {selectedMemoire && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen flex items-center justify-center p-4">

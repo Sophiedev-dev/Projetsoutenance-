@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getApiUrl } from '../utils/config';
 import { toast } from 'react-toastify';
@@ -12,15 +12,17 @@ const Form = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confPassword, setConfPassword] = useState('');
-  const router = useRouter(); // Initialisation du hook
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const [passwordVisible, setPasswordVisible] = useState(false);
-
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
 
     if (password !== confPassword) {
       toast.error("Les mots de passe ne correspondent pas.");
+      setIsLoading(false);
       return;
     }
 
@@ -68,6 +70,8 @@ const Form = () => {
       } else {
         toast.error("Une erreur inconnue s'est produite");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,6 +106,7 @@ const Form = () => {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 md:px-4 py-2 md:py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none text-sm md:text-base"
                   placeholder="John"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -113,6 +118,7 @@ const Form = () => {
                   onChange={(e) => setSurname(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                   placeholder="Doe"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -126,6 +132,7 @@ const Form = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                 placeholder="john.doe@example.com"
+                disabled={isLoading}
               />
             </div>
 
@@ -139,11 +146,13 @@ const Form = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                   placeholder="Enter your password"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setPasswordVisible(!passwordVisible)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={isLoading}
                 >
                   {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -160,11 +169,13 @@ const Form = () => {
                   onChange={(e) => setConfPassword(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-gray-50/50 border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
                   placeholder="Confirm your password"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setPasswordVisible(!passwordVisible)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={isLoading}
                 >
                   {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -173,9 +184,17 @@ const Form = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2.5 md:py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200 text-sm md:text-base"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-2.5 md:py-3 rounded-xl font-medium hover:shadow-lg hover:scale-[1.02] transition-all duration-200 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center"
             >
-              Create Account
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" size={18} />
+                  Inscription en cours...
+                </>
+              ) : (
+                'Create Account'
+              )}
             </button>
 
             <div className="text-center text-xs md:text-sm text-gray-600">

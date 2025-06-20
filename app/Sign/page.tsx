@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react'; 
+import { Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react'; 
 import { getApiUrl } from '../utils/config';
 
 type User = {
@@ -24,11 +24,13 @@ const SignInPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     console.log('Tentative de connexion avec:', { email, password });
 
     try {
@@ -83,6 +85,8 @@ const SignInPage: React.FC = () => {
     } catch (err: unknown) {
       console.error('Erreur complète:', err);
       setError('Erreur de connexion au serveur');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -114,6 +118,7 @@ const SignInPage: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                   placeholder="admin@test.com"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -126,11 +131,13 @@ const SignInPage: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-colors"
                     placeholder="••••••"
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setPasswordVisible(!passwordVisible)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
                   >
                     {passwordVisible ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -146,9 +153,17 @@ const SignInPage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Se connecter
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin mr-2" size={20} />
+                  Connexion en cours...
+                </>
+              ) : (
+                'Se connecter'
+              )}
             </button>
 
             <div className="text-center text-sm text-gray-600">
