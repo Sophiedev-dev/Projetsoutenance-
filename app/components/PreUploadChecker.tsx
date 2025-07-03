@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Upload, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import SimilarityReport from "./SimilarityReport";
+import AIDetectionProgress from "./AIDetectionProgress";
+import { Progress } from "./ui/progress";
 import { getApiUrl } from "../utils/config";
+import { AIDetector, AIDetectionResult, AIAnalysisProgress, extractTextFromPDF } from "../utils/aiDetection";
 
 // Interface pour les éléments de résultat de similarité
 interface SimilarityResultItem {
   id_memoire: number;
-  name: string; // Important: SimilarityReport attend 'name' et non 'libelle'
+  name: string;
   similarity: number;
   author: string;
   submissionDate: string;
@@ -64,6 +67,12 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
     dangerThreshold: 70,
   });
 
+  // États pour la détection d'IA locale
+  const [aiAnalyzing, setAiAnalyzing] = useState<boolean>(false);
+  const [aiProgress, setAiProgress] = useState<AIAnalysisProgress | undefined>(undefined);
+  const [aiResult, setAiResult] = useState<AIDetectionResult | undefined>(undefined);
+  const [enableLocalAI, setEnableLocalAI] = useState<boolean>(true);
+
   // Charger les seuils de similarité au chargement du composant
   useEffect(() => {
     fetchThresholds();
@@ -103,15 +112,45 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         return;
       }
       if (selectedFile.size > 10 * 1024 * 1024) {
-        // 10MB limit
         setError("File size must be less than 10MB");
         return;
       }
       setFile(selectedFile);
       setError(null);
       
-      // Réinitialiser les résultats précédents lorsqu'un nouveau fichier est sélectionné
+      // Réinitialiser les résultats précédents
       setResult(null);
+      setAiResult(undefined);
+      setAiProgress(undefined);
+    }
+  };
+
+  // Fonction pour analyser le contenu IA localement
+  const analyzeAIContent = async (file: File): Promise<void> => {
+    if (!enableLocalAI) return;
+    
+    setAiAnalyzing(true);
+    setAiProgress(undefined);
+    setAiResult(undefined);
+
+    try {
+      // Extraire le texte réel du PDF
+      const text = await extractTextFromPDF(file);
+
+      // Créer le détecteur d'IA avec callback de progression
+      const detector = new AIDetector((progress: AIAnalysisProgress) => {
+        setAiProgress(progress);
+      });
+
+      // Analyser le texte
+      const result = await detector.analyzeText(text);
+      setAiResult(result);
+
+    } catch (error) {
+      console.error('Erreur lors de l\'analyse IA:', error);
+      setError('Erreur lors de l\'analyse de détection d\'IA');
+    } finally {
+      setAiAnalyzing(false);
     }
   };
 
@@ -125,6 +164,11 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
     setError(null);
 
     try {
+      // Démarrer l'analyse IA en parallèle si activée
+      if (enableLocalAI) {
+        analyzeAIContent(file);
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       
@@ -147,12 +191,12 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         throw new Error(data.message || "Échec de la vérification");
       }
 
-      // Trouver la similarité la plus élevée parmi les résultats
+      // Trouver la similarité la plus élevée
       const maxSimilarity = Array.isArray(data.results) 
         ? Math.max(...data.results.map((r: ApiResponseData) => r.similarity), 0)
         : 0;
 
-      // Déterminer le niveau de similarité en fonction des seuils
+      // Déterminer le niveau de similarité
       let level: "success" | "warning" | "danger" = "success";
       let message = "Similarité acceptable, vous pouvez soumettre votre document";
       let color = "green";
@@ -167,13 +211,12 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         color = "orange";
       }
 
-      // Transformation des données pour correspondre aux interfaces
       const resultData: SimilarityResult = {
         status: {
           level: level,
           message: message,
           color: color,
-          percentage: maxSimilarity, // Utiliser la similarité maximale trouvée
+          percentage: maxSimilarity,
           similarity_warning_threshold: thresholds.warningThreshold,
           similarity_danger_threshold: thresholds.dangerThreshold,
         },
@@ -192,12 +235,9 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
         onSimilarityResult(resultData);
       }
 
-      // Si le seuil de danger est dépassé, réinitialiser le fichier
       if (maxSimilarity >= thresholds.dangerThreshold) {
         setFile(null);
-        const input = document.querySelector(
-          "input[type='file']"
-        ) as HTMLInputElement;
+        const input = document.querySelector("input[type='file']") as HTMLInputElement;
         if (input) input.value = "";
       }
 
@@ -207,9 +247,12 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
       }
     } catch (err) {
       console.error("Erreur:", err);
-      setError(
-        err instanceof Error ? err.message : "Échec de la vérification"
-      );
+      setError("Erreur de connexion. Utilisation de la détection IA locale uniquement.");
+      
+      // En cas d'erreur réseau, continuer avec l'analyse IA locale seulement
+      if (!aiAnalyzing && enableLocalAI && file) {
+        analyzeAIContent(file);
+      }
     } finally {
       setLoading(false);
     }
@@ -233,16 +276,33 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
   return (
     <div className="mb-6">
       <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-        <h3 className="font-medium mb-2">Pre-submission Similarity Check</h3>
+        <h3 className="font-medium mb-2">Vérification Pré-soumission Avancée</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Before submitting your thesis, check if it has similarities with
-          existing documents in our database.
+          Vérifiez la similarité et détectez automatiquement le contenu IA avant de soumettre votre mémoire.
         </p>
+
+        {/* Option pour activer/désactiver la détection IA locale */}
+        <div className="mb-4 p-3 bg-white rounded-lg border">
+          <label className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              checked={enableLocalAI}
+              onChange={(e) => setEnableLocalAI(e.target.checked)}
+              className="form-checkbox h-4 w-4 text-purple-600"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Activer la détection dIA locale (recommandé)
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1">
+            Analyse le document localement sans appels réseau pour détecter le contenu généré par IA
+          </p>
+        </div>
 
         <div className="flex space-x-3 mb-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select your thesis PDF
+              Sélectionner votre mémoire PDF
             </label>
             <input
               type="file"
@@ -260,35 +320,71 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
           <div className="flex items-end">
             <button
               onClick={checkSimilarity}
-              disabled={loading || !file}
+              disabled={loading || !file || aiAnalyzing}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Checking...
+                  Vérification...
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Check Similarity
+                  Vérifier
                 </>
               )}
             </button>
           </div>
         </div>
 
+        {/* Barre de progression de la similarité */}
         {loading && (
           <div className="py-3">
             <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
               <div className="w-1/3 h-full bg-blue-600 animate-pulse"></div>
             </div>
             <p className="text-sm text-center mt-1 text-gray-600">
-              Analyzing document...
+              Analyse de similarité en cours...
             </p>
           </div>
         )}
 
+        {/* Barre de progression globale de l'IA */}
+        {aiResult && !aiAnalyzing && (
+          <div className="py-3">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Détection IA</span>
+              <span className={`text-sm font-medium ${
+                aiResult.aiPercentage >= 70 ? 'text-red-600' :
+                aiResult.aiPercentage >= 50 ? 'text-orange-600' :
+                aiResult.aiPercentage >= 30 ? 'text-yellow-600' : 'text-green-600'
+              }`}>
+                {aiResult.aiPercentage}%
+              </span>
+            </div>
+            <Progress 
+              value={aiResult.aiPercentage} 
+              className="w-full h-3"
+            />
+            <p className="text-xs text-center mt-1 text-gray-500">
+              {aiResult.aiPercentage >= 70 ? 'Très forte probabilité de contenu IA' :
+               aiResult.aiPercentage >= 50 ? 'Forte probabilité de contenu IA' :
+               aiResult.aiPercentage >= 30 ? 'Probabilité modérée de contenu IA' : 'Faible probabilité de contenu IA'}
+            </p>
+          </div>
+        )}
+
+        {/* Composant de détection IA */}
+        {enableLocalAI && (aiAnalyzing || aiResult) && (
+          <AIDetectionProgress
+            progress={aiProgress}
+            result={aiResult}
+            isAnalyzing={aiAnalyzing}
+          />
+        )}
+
+        {/* Résultats de similarité */}
         {result && !loading && (
           <>
             <div
@@ -309,7 +405,6 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
             <SimilarityReport 
               similarityData={result} 
               onSimilarityValidation={(isValid) => {
-                // Si onFileVerified existe et que la similarité est valide
                 if (onFileVerified && file && isValid) {
                   calculateFileHash(file).then(hash => {
                     onFileVerified(hash);
