@@ -7,6 +7,7 @@ import MySideBar from './ui/sideBar';
 import PreUploadChecker from '../components/PreUploadChecker';
 import SimilarityReportModal from '../components/SimilarityReportModal';
 import { getApiUrl } from '../utils/config';
+import { useRouter } from 'next/navigation';
 
 interface Memoire {
   id_memoire: string;
@@ -73,6 +74,7 @@ interface SimilarityMatchResult {
 }
 
 function App() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [memoires, setMemoires] = useState<Memoire[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -424,7 +426,7 @@ function App() {
             <p className="text-gray-600 mt-2">Manage your academic works and publications</p>
           </div>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => router.push('/submit-thesis')}
             className="w-full md:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:scale-[1.02] transition-all duration-200"
           >
             <Upload className="mr-2" size={20} />

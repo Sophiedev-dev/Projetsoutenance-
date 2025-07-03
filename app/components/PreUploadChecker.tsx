@@ -26,7 +26,7 @@ interface SimilarityStatus {
 }
 
 // Interface complète pour le résultat de similarité
-interface SimilarityResult {
+export interface SimilarityResult {
   status: SimilarityStatus;
   results: SimilarityResultItem[];
 }
@@ -52,11 +52,13 @@ interface ThresholdData {
 interface PreUploadCheckerProps {
   onSimilarityResult?: (result: SimilarityResult) => void;
   onFileVerified?: (fileHash: string) => void;
+  onFileSelected?: (file: File | null) => void; // Ajoute cette ligne
 }
 
 const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
   onSimilarityResult,
   onFileVerified,
+  onFileSelected,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -104,25 +106,29 @@ const PreUploadChecker: React.FC<PreUploadCheckerProps> = ({
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type !== "application/pdf") {
-        setError("Please upload a PDF file");
-        return;
-      }
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError("File size must be less than 10MB");
-        return;
-      }
-      setFile(selectedFile);
-      setError(null);
-      
-      // Réinitialiser les résultats précédents
-      setResult(null);
-      setAiResult(undefined);
-      setAiProgress(undefined);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    if (onFileSelected) {
+      onFileSelected(selectedFile);
     }
+    // if (selectedFile) {
+    //   if (selectedFile.type !== "application/pdf") {
+    //     setError("Please upload a PDF file");
+    //     return;
+    //   }
+    //   if (selectedFile.size > 10 * 1024 * 1024) {
+    //     setError("File size must be less than 10MB");
+    //     return;
+    //   }
+    //   setFile(selectedFile);
+    //   setError(null);
+      
+    //   // Réinitialiser les résultats précédents
+    //   setResult(null);
+    //   setAiResult(undefined);
+    //   setAiProgress(undefined);
+    // }
   };
 
   // Fonction pour analyser le contenu IA localement
