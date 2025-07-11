@@ -69,11 +69,7 @@ interface DetailedSimilarityData {
   matches: DetailedSimilarityMatch[];
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-}
+
 
 const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({ 
   memoire, 
@@ -169,27 +165,34 @@ const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({
     try {
       setIsLoading(true);
       const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/similarity/${itemId}/details`));
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la récupération des détails');
+      let data: { success?: boolean; message?: string; data?: DetailedSimilarityData; details?: DetailedSimilarityData } | null = null;    
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        console.error('Réponse non JSON ou malformée:', jsonErr);
       }
-
-      const data: ApiResponse<DetailedSimilarityData> = await response.json();
-      
-      if (data.success && data.data) {
+      console.debug('Réponse API detailed similarity:', response.status, data);
+      if (!response.ok) {
+        throw new Error(data && data.message ? data.message : `Erreur serveur: ${response.status}`);
+      }
+      if (data && data.success && data.details) {
         setDetailedSimilarityData({
-          ...data.data,
+          ...data.details,
           sourceMemoireTitle: memoire.libelle,
           targetMemoireTitle: similarItem.name
         });
         setShowSimilarityReport(true);
       } else {
-        throw new Error(data.message || 'Erreur lors de la récupération des détails');
+        throw new Error(data && data.message ? data.message : 'Erreur lors de la récupération des détails');
       }
-    } catch (error) {
-      console.error('Error fetching detailed similarity data:', error);
-      toast.error('Erreur lors de la récupération des détails de similarité');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Error fetching detailed similarity data:', error);
+        toast.error(error.message ? error.message : 'Erreur lors de la récupération des détails de similarité');
+      } else {
+        console.error('Unknown error fetching detailed similarity data:', error);
+        toast.error('Erreur lors de la récupération des détails de similarité');
+      }
     } finally {
       setIsLoading(false);
     }

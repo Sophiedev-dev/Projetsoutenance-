@@ -56,7 +56,7 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
 
       // Score de similarité
       doc.setFontSize(16);
-      doc.text(`Score de similarité: ${similarityData.similarity.toFixed(1)}%`, 20, 40);
+      doc.text(`Score de similarité: ${typeof similarityData.similarity === 'number' ? similarityData.similarity.toFixed(1) : '0.0'}%`, 20, 40);
 
       // Documents comparés
       doc.setFontSize(14);
@@ -183,7 +183,7 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
                     similarityData.similarity
                   )}`}
                 >
-                  {similarityData.similarity.toFixed(1)}%
+                  {typeof similarityData.similarity === 'number' ? similarityData.similarity.toFixed(1) : '0.0'}%
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
                       : "Aucun extrait similaire trouvé"}
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    Score de similarité global: {similarityData.similarity.toFixed(1)}%
+                    Score de similarité global: {typeof similarityData.similarity === 'number' ? similarityData.similarity.toFixed(1) : '0.0'}%
                   </p>
                 </div>
               )}

@@ -1,5 +1,8 @@
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Si besoin d'un chemin local :
+// pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
 
 // Algorithme de détection d'IA local - sans appels API
 export interface AIDetectionResult {
