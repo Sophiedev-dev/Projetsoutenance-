@@ -24,14 +24,21 @@ interface DetailedSimilarityData {
   }>;
 }
 
+import { Worker, Viewer } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+
 interface SimilarityReportModalProps {
   data: DetailedSimilarityData;
   onClose: () => void;
+  pdfUrl?: string; // url du mémoire courant
+  similarityScoreToDisplay?: number; // Ajout pour score principal synchronisé
 }
 
 const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
   data: similarityData,
   onClose,
+  pdfUrl,
+  similarityScoreToDisplay,
 }) => {
   const getStatusColor = (similarity: number): string => {
     if (similarity >= 70) return "text-red-600";
@@ -45,6 +52,14 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
     return <CheckCircle className="w-6 h-6 text-green-500" />;
   };
 
+  // Score affiché synchronisé
+  const displayedScore =
+    typeof similarityScoreToDisplay === 'number'
+      ? similarityScoreToDisplay
+      : typeof similarityData.similarity === 'number'
+        ? similarityData.similarity
+        : 0;
+
   // Génération du PDF avec numéros de page
   const downloadReport = (): void => {
     try {
@@ -54,9 +69,15 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
       doc.setFontSize(20);
       doc.text("Rapport de Similarité", 20, 20);
 
-      // Score de similarité
+      // Score affiché synchronisé
+      const displayedScore =
+        typeof similarityScoreToDisplay === 'number'
+          ? similarityScoreToDisplay
+          : typeof similarityData.similarity === 'number'
+            ? similarityData.similarity
+            : 0;
       doc.setFontSize(16);
-      doc.text(`Score de similarité: ${typeof similarityData.similarity === 'number' ? similarityData.similarity.toFixed(1) : '0.0'}%`, 20, 40);
+      doc.text(`Score de similarité le plus élevé: ${displayedScore.toFixed(1)}%`, 20, 40);
 
       // Documents comparés
       doc.setFontSize(14);
@@ -156,6 +177,12 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Rapport de similarité</h2>
+<div className="flex items-center gap-2 mt-2 mb-6">
+  {getStatusIcon(displayedScore)}
+  <span className={`text-lg font-semibold ${getStatusColor(displayedScore)}`}>
+    Score de similarité : {displayedScore.toFixed(1)}%
+  </span>
+</div>
             <div className="flex items-center gap-2">
               <button
                 onClick={downloadReport}
@@ -173,6 +200,23 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
             </div>
           </div>
 
+          {/* Aperçu PDF et téléchargement */}
+          {pdfUrl && (
+            <div className="mb-6">
+              <div className="mb-2 h-[60vh] overflow-y-auto border rounded-lg">
+                <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                  <Viewer fileUrl={pdfUrl} />
+                </Worker>
+              </div>
+              <a
+                href={pdfUrl}
+                download
+                className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mt-2"
+              >
+                <Download className="mr-2" /> Télécharger le PDF
+              </a>
+            </div>
+          )}
           <div className="space-y-6">
             {/* Score de similarité */}
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -180,16 +224,37 @@ const SimilarityReportModal: React.FC<SimilarityReportModalProps> = ({
                 <h3 className="text-lg font-semibold">Score de similarité</h3>
                 <span
                   className={`text-2xl font-bold ${getStatusColor(
-                    similarityData.similarity
+                    typeof similarityData.similarity === 'number' && !isNaN(similarityData.similarity)
+                      ? similarityData.similarity
+                      : (Array.isArray(similarityData.matches) && similarityData.matches.length > 0
+                          ? Math.max(...similarityData.matches.map(m => m.similarity))
+                          : 0)
                   )}`}
                 >
-                  {typeof similarityData.similarity === 'number' ? similarityData.similarity.toFixed(1) : '0.0'}%
+                  {typeof similarityData.similarity === 'number' && !isNaN(similarityData.similarity)
+                    ? similarityData.similarity.toFixed(1)
+                    : (Array.isArray(similarityData.matches) && similarityData.matches.length > 0
+                        ? Math.max(...similarityData.matches.map(m => m.similarity)).toFixed(1)
+                        : '0.0')}
+                  %
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {getStatusIcon(similarityData.similarity)}
+                {getStatusIcon(
+                  typeof similarityData.similarity === 'number' && !isNaN(similarityData.similarity)
+                    ? similarityData.similarity
+                    : (Array.isArray(similarityData.matches) && similarityData.matches.length > 0
+                        ? Math.max(...similarityData.matches.map(m => m.similarity))
+                        : 0)
+                )}
                 <span
-                  className={`${getStatusColor(similarityData.similarity)}`}
+                  className={`${getStatusColor(
+                    typeof similarityData.similarity === 'number' && !isNaN(similarityData.similarity)
+                      ? similarityData.similarity
+                      : (Array.isArray(similarityData.matches) && similarityData.matches.length > 0
+                          ? Math.max(...similarityData.matches.map(m => m.similarity))
+                          : 0)
+                  )}`}
                 >
                   {similarityData.similarity >= 70
                     ? "Similarité élevée"

@@ -27,6 +27,7 @@ interface Memoire {
   university?: string;
   mention?: string;
   etudiant_nom?: string;
+  status?: string;
 }
 
 interface Stats {
@@ -151,7 +152,8 @@ const Homepage: React.FC = () => {
                 speciality: speciality,
                 university: 'Université de Paris',
                 mention: mentions[Math.floor(Math.random() * mentions.length)],
-                etudiant_nom: authors[Math.floor(Math.random() * authors.length)]
+                etudiant_nom: authors[Math.floor(Math.random() * authors.length)],
+                status: 'validated'
               });
             }
           });
@@ -160,14 +162,15 @@ const Homepage: React.FC = () => {
         // Combiner les mémoires réels avec les simulés
         const realMemoires = data.memoire.map((memoire: Memoire) => ({
           ...memoire,
+          status: (memoire.status || '').toString().trim().toLowerCase(),
           hasSignature: Boolean(memoire.signature)
         }));
 
         const allMemoires = [...realMemoires];
 
         // Filtrer selon les critères sélectionnés
-        let filteredMemoires = allMemoires;
-
+        let filteredMemoires = allMemoires.filter(m => (m.status || '').toString().trim().toLowerCase() === 'validated');
+      
         if (selectedCycle) {
           filteredMemoires = filteredMemoires.filter(m => m.cycle === selectedCycle);
         }
@@ -369,6 +372,10 @@ const Homepage: React.FC = () => {
       </div>
     </div>
   );
+
+  const filteredMemoires: Memoire[] = memoires
+    .filter((memoire: Memoire) => !selectedCycle || memoire.cycle === selectedCycle)
+    .filter((memoire: Memoire) => !selectedSpeciality || memoire.speciality === selectedSpeciality);
 
   return (
     <div id="accueil" className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -760,24 +767,24 @@ const Homepage: React.FC = () => {
                   </div>
 
                   <div className="relative flex-1">
-                    <select
-                      value={selectedSpeciality}
-                      onChange={(e) => setSelectedSpeciality(e.target.value)}
-                      className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
-                    >
-                      <option value="">Toutes les spécialités</option>
-                      {selectedCycle ? 
-                        CYCLE_SPECIALITIES[selectedCycle]?.map(spec => (
-                          <option key={spec} value={spec}>{spec}</option>
-                        )) :
-                        Object.values(CYCLE_SPECIALITIES).flat().map(spec => (
-                          <option key={spec} value={spec}>{spec}</option>
-                        ))
-                      }
-                    </select>
-                    <BookOpen className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                    <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
-                  </div>
+  <select
+    value={selectedSpeciality}
+    onChange={(e) => setSelectedSpeciality(e.target.value)}
+    className="w-full appearance-none pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-700"
+  >
+    <option value="">Toutes les spécialités</option>
+    {selectedCycle
+      ? Array.from(new Set(CYCLE_SPECIALITIES[selectedCycle] || [])).map(spec => (
+          <option key={spec} value={spec}>{spec}</option>
+        ))
+      : Array.from(new Set(Object.values(CYCLE_SPECIALITIES).flat())).slice(0, 3).map(spec => (
+          <option key={spec} value={spec}>{spec}</option>
+        ))
+    }
+  </select>
+  <BookOpen className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+  <ChevronDown className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
+</div>
                 </div>
               </div>
 
@@ -813,7 +820,7 @@ const Homepage: React.FC = () => {
           {Object.keys(CYCLE_SPECIALITIES).map((cycle) => {
             if (selectedCycle && selectedCycle !== cycle) return null;
 
-            const cycleMemoires = memoires.filter(memoire => memoire.cycle === cycle);
+            const cycleMemoires = filteredMemoires.filter(memoire => memoire.cycle === cycle);
 
             if (cycleMemoires.length === 0) return null;
 

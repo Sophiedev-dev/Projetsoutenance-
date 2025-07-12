@@ -71,6 +71,9 @@ interface DetailedSimilarityData {
 
 
 
+import { Worker, Viewer } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+
 const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({ 
   memoire, 
   onBack, 
@@ -83,8 +86,11 @@ const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSimilarityReport, setShowSimilarityReport] = useState(false);
   const [detailedSimilarityData, setDetailedSimilarityData] = useState<DetailedSimilarityData | null>(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string>("");
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string>("");
 
-  
   useEffect(() => {
     if (memoire?.id_memoire) {
       fetchSimilarityData(memoire.id_memoire);
@@ -286,19 +292,86 @@ const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({
             <p className="text-sm text-gray-500 mb-1">Description</p>
             <p>{memoire.description}</p>
           </div>
+
+          {/* PDF Viewer Modal */}
+        {showPdfViewer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+            <div className="bg-white rounded-xl shadow-lg p-6 max-w-3xl w-full relative">
+              <button
+                className="absolute top-2 right-2 p-2 bg-gray-100 rounded-full hover:bg-gray-200"
+                onClick={() => { setShowPdfViewer(false); setPdfUrl(""); setPdfError(""); }}
+                aria-label="Fermer"
+              >
+                <span aria-hidden>×</span>
+              </button>
+              {pdfLoading ? (
+                <div className="flex items-center justify-center h-[60vh]">
+                  <span className="text-gray-500">Chargement du PDF...</span>
+                </div>
+              ) : pdfError ? (
+                <div className="flex flex-col items-center justify-center h-[60vh] text-red-600">
+                  <span>{pdfError}</span>
+                </div>
+              ) : pdfUrl ? (
+                <>
+                  {console.debug('[PDF] URL utilisée pour Viewer:', pdfUrl)}
+                  <div className="mb-4 h-[70vh] overflow-y-auto border rounded-lg">
+                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                      <Viewer fileUrl={pdfUrl} />
+                    </Worker>
+                  </div>
+                  <a
+                    href={pdfUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mt-2"
+                  >
+                    <Download className="mr-2" /> Télécharger le PDF
+                  </a>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-[60vh]">
+                  <span className="text-gray-500">Aucun PDF à afficher.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
           <div className="flex space-x-3 mb-8">
-            <a
-              href={getApiUrl(`/${memoire.file_path}`)}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={async () => {
+                setPdfError("");
+                setPdfLoading(true);
+                setShowPdfViewer(true);
+                try {
+                  if (!memoire) throw new Error("Mémoire non défini");
+                  const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
+                  if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+                  const data = await response.json();
+                  if (!data.success || !data.url) throw new Error('URL de téléchargement non disponible');
+                  setPdfUrl(data.url); // Utilisation brute, aucune modification
+                  console.debug('[PDF] URL utilisée pour Viewer:', data.url);
+                } catch (e: unknown) {
+                  if (e && typeof e === 'object' && 'message' in e) {
+                    setPdfError((e as { message?: string }).message || 'Erreur lors du chargement du PDF');
+                  } else {
+                    setPdfError('Erreur lors du chargement du PDF');
+                  }
+                  setPdfUrl("");
+                } finally {
+                  setPdfLoading(false);
+                }
+              }}
               className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               <Eye size={18} className="mr-2" />
               Visualiser le PDF
-            </a>
+            </button>
             <a
-              href={getApiUrl(`/${memoire.file_path}`)}
-              download
+  href={pdfUrl}
+  download
               className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
             >
               <Download size={18} className="mr-2" />
@@ -454,6 +527,10 @@ const MemoireDetailView: React.FC<MemoireDetailViewProps> = ({
         <SimilarityReportModal
           data={detailedSimilarityData}
           onClose={() => setShowSimilarityReport(false)}
+          similarityScoreToDisplay={
+            // Si detailedSimilarityData.similarity === similarityData?.status.percentage, on affiche le score général
+            similarityData?.status?.percentage ?? detailedSimilarityData.similarity
+          }
         />
       )}
     </div>

@@ -113,7 +113,7 @@ const MemoirePage = () => {
       setDownloading(true);
       
       // Vérifier si le document est signé
-      if (memoire.status === 'validated' && memoire.signature) {
+      if ((memoire.status || '').trim().toLowerCase() === 'validated' && memoire.signature) {
         console.log('Downloading memoire with signature:', memoire.id_memoire);
         const response = await fetch(getApiUrl(`/api/memoire/${memoire.id_memoire}/download`));
         
@@ -283,7 +283,7 @@ const MemoirePage = () => {
               </button>
             </div>
             <div className="flex items-center space-x-4">
-              {memoire.status === 'validated' && (
+              {(memoire.status || '').trim().toLowerCase() === 'validated' && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -313,7 +313,7 @@ const MemoirePage = () => {
       </nav>
 
       <div className="pt-20 pb-8 bg-white shadow-sm relative">
-        {memoire.status === 'validated' && (
+        {(memoire.status || '').trim().toLowerCase() === 'validated' && (
           <div className="absolute top-4 right-8 flex items-center bg-green-50 border-2 border-green-200 px-6 py-3 rounded-full shadow-lg transform translate-x-4">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -322,7 +322,7 @@ const MemoirePage = () => {
           </div>
         )}
         
-        {memoire.status === 'validated' && memoire.validated_by_name && (
+        {(memoire.status || '').trim().toLowerCase() === 'validated' && memoire.validated_by_name && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
