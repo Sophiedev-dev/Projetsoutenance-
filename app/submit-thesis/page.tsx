@@ -380,8 +380,19 @@ const SubmitThesisPage: React.FC = () => {
       {/* Détails du mémoire */}
       <input name="libelle" placeholder="Titre" value={form.libelle} onChange={handleChange} required className="border rounded p-2 w-full" />
       <input name="annee" placeholder="Année" value={form.annee} onChange={handleChange} required className="border rounded p-2 w-full" />
-      <input name="speciality" placeholder="Spécialité" value={form.speciality} onChange={handleChange} required className="border rounded p-2 w-full" />
-      <input name="university" placeholder="Université" value={form.university} onChange={handleChange} required className="border rounded p-2 w-full" />
+      <select name="cycle" value={form.cycle} onChange={handleChange} required  className="border rounded p-2 w-full">
+      <option value="">Cycle</option>
+       <option value="Bachelor">Bachelor</option>
+  <option value="Master">Master</option>
+  <option value="PhD">PhD</option>
+</select>
+<select name="speciality" value={form.speciality} onChange={handleChange} required  className="border rounded p-2 w-full">
+  <option value="">Spécialité</option>
+  <option value="Securité">Securité</option>
+  <option value="Réseau">Réseau</option>
+  <option value="Génie Logiciel">Génie Logiciel</option>
+</select>    
+<input name="university" placeholder="Université" value={form.university} onChange={handleChange} required className="border rounded p-2 w-full" />
       <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} required className="border rounded p-2 w-full" />
       <select name="mention" value={form.mention} onChange={handleChange} required className="border rounded p-2 w-full">
         <option value="">Mention</option>
